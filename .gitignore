@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build artifacts
+dist/
+.aws-sam/
+coverage/
+
+# local env files (never commit)
+.env
+.env.local
+.env.*.local
+
+# local browser profile data & IDE cache (sensitive — never commit or relocate carelessly)
+.freebuff/
+.kilo/
+

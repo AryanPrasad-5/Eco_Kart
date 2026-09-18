@@ -1,0 +1,304 @@
+[
+  {
+    "facility_id": "F001",
+    "name": "GreenCrate Buyback — MG Road",
+    "lat": 12.9756,
+    "lng": 77.6068,
+    "accepted_categories": [
+      "plastic",
+      "paper",
+      "metal"
+    ],
+    "payout_estimate": {
+      "plastic": 24,
+      "paper": 12,
+      "metal": 38
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "MG Road, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:00–18:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F002",
+    "name": "Shivajinagar Scrap Traders",
+    "lat": 12.9812,
+    "lng": 77.606,
+    "accepted_categories": [
+      "metal",
+      "e-waste",
+      "plastic"
+    ],
+    "payout_estimate": {
+      "metal": 40,
+      "e-waste": 50,
+      "plastic": 20
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Shivajinagar, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 10:00–19:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F003",
+    "name": "PaperRound Recycling — Ulsoor",
+    "lat": 12.9812,
+    "lng": 77.621,
+    "accepted_categories": [
+      "paper"
+    ],
+    "payout_estimate": {
+      "paper": 15
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Ulsoor, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:30–18:30",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F004",
+    "name": "Cubbon Compost Hub",
+    "lat": 12.9763,
+    "lng": 77.5929,
+    "accepted_categories": [
+      "organic"
+    ],
+    "payout_estimate": {
+      "organic": 6
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Cubbon Park Rd, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Daily 8:00–12:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F005",
+    "name": "GlassWorks India — Richmond Town",
+    "lat": 12.9552,
+    "lng": 77.5988,
+    "accepted_categories": [
+      "glass"
+    ],
+    "payout_estimate": {
+      "glass": 5
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Richmond Town, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 10:00–18:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F006",
+    "name": "eRe Cycle Depot — Indiranagar",
+    "lat": 12.9719,
+    "lng": 77.6412,
+    "accepted_categories": [
+      "e-waste"
+    ],
+    "payout_estimate": {
+      "e-waste": 55
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Indiranagar, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 10:00–19:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F007",
+    "name": "Malleshwaram Scrap Mart",
+    "lat": 13.0035,
+    "lng": 77.5696,
+    "accepted_categories": [
+      "plastic",
+      "metal",
+      "paper",
+      "glass"
+    ],
+    "payout_estimate": {
+      "plastic": 22,
+      "metal": 36,
+      "paper": 13,
+      "glass": 6
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Malleshwaram, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:00–19:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F008",
+    "name": "BBMP Ward 95 Drop-off Centre",
+    "lat": 12.9665,
+    "lng": 77.6005,
+    "accepted_categories": [
+      "plastic",
+      "paper",
+      "metal",
+      "glass",
+      "e-waste",
+      "organic",
+      "other"
+    ],
+    "payout_estimate": {},
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Ward 95, Bengaluru",
+    "contact": "+91-33-XXXXXXXXXX",
+    "operating_hours": "Daily 7:00–20:00",
+    "source": "municipal-listing-demo",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F009",
+    "name": "SecondLife Upcyclers — Church Street",
+    "lat": 12.975,
+    "lng": 77.6048,
+    "accepted_categories": [
+      "other",
+      "paper"
+    ],
+    "payout_estimate": {
+      "other": 8,
+      "paper": 10
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Church St, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 11:00–19:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F010",
+    "name": "PETVerse Plastics Buyback — Ashok Nagar",
+    "lat": 12.9698,
+    "lng": 77.6095,
+    "accepted_categories": [
+      "plastic"
+    ],
+    "payout_estimate": {
+      "plastic": 28
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Ashok Nagar, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:00–18:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F011",
+    "name": "MetalMandi Kabadiwalas — Viveknagar",
+    "lat": 12.9612,
+    "lng": 77.6112,
+    "accepted_categories": [
+      "metal",
+      "e-waste"
+    ],
+    "payout_estimate": {
+      "metal": 42,
+      "e-waste": 48
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Viveknagar, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:30–19:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F012",
+    "name": "OrganoBin Community Compost — Langford Town",
+    "lat": 12.9552,
+    "lng": 77.6018,
+    "accepted_categories": [
+      "organic"
+    ],
+    "payout_estimate": {
+      "organic": 7
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Langford Town, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Daily 8:00–13:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F013",
+    "name": "Rajajinagar Recyclers",
+    "lat": 12.991,
+    "lng": 77.552,
+    "accepted_categories": [
+      "plastic",
+      "paper",
+      "glass",
+      "metal"
+    ],
+    "payout_estimate": {
+      "plastic": 21,
+      "paper": 11,
+      "glass": 5,
+      "metal": 35
+    },
+    "payout_basis": "estimated",
+    "verified": true,
+    "address": "Rajajinagar, Bengaluru",
+    "contact": "+91-98XXXXXXXX",
+    "operating_hours": "Mon–Sat 9:00–18:00",
+    "source": "curated-demo-listing",
+    "updated_at": "2026-09-16"
+  },
+  {
+    "facility_id": "F014",
+    "name": "Chetan Kabadiwala",
+    "lat": 12.988,
+    "lng": 77.604,
+    "accepted_categories": [
+      "plastic",
+      "paper",
+      "metal",
+      "glass",
+      "other"
+    ],
+    "payout_estimate": {
+      "plastic": 30,
+      "paper": 13,
+      "metal": 44,
+      "glass": 6,
+      "other": 9
+    },
+    "payout_basis": "estimated",
+    "verified": false,
+    "address": "Seshadripuram, Bengaluru",
+    "contact": "+91-97XXXXXXXX",
+    "operating_hours": "Mon–Sun 9:00–21:00",
+    "source": "directory-listing-demo",
+    "updated_at": "2026-09-16"
+  }
+]
