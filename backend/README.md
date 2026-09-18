@@ -76,14 +76,19 @@ live in Git: the stack needs none (Lambda env = names/IDs only; no keys).
 ## 2. Seed the registry
 
 ```bash
-AWS_REGION=ap-south-1 node seed/seed.mjs                    # default table: smartsort-backend-facilities
+node seed/seed.mjs                                          # dev default table: smartsort-backend-dev-facilities
 node seed/seed.mjs --table <stack-name>-facilities          # non-default stack (or use the TableName stack output)
-curl "$API/facilities" | jq length                           # verify: 14
+node seed/seed.mjs --clear                                  # delete ONLY the 14 seed IDs — never unrelated rows
+curl "$API/facilities" | jq length                          # verify: 14
 ```
 
-The seed default matches the samconfig default stack (`smartsort-backend`).
-For any other stack name, pass `--table` explicitly or read the `TableName`
-stack output.
+Idempotent: `facility_id` is the hash key and writes are upserts, so running
+the seed twice never duplicates rows or changes the ID set. EVERY record is
+validated against the runtime's facility contract (mirror of `parseFacility`)
+BEFORE any write — one bad record aborts the seed with nothing written. Writes
+use BatchWriteItem (25/chunk) with bounded unprocessed-item retry. Credentials
+ come from the ambient AWS chain: seeding is a developer-side operation, and
+the runtime Lambda roles intentionally hold NO write permissions.
 
 ## 3. Smoke tests
 
@@ -93,6 +98,30 @@ curl -X POST "$API/match-facilities" -H 'Content-Type: application/json' \
   -d '{"category":"metal","lat":12.9716,"lng":77.5946}'                     # NO Bedrock involved
 curl -X POST "$API/classify-and-match" -H 'Content-Type: application/json' \
   -d "{\"imageBase64\":\"$(base64 -w0 test.jpg)\",\"lat\":12.9716,\"lng\":77.5946}"
+
+# Full read-only live verification (all categories, independent 0.6/0.3/0.1
+# ranking recomputation, determinism, normalization, far-location edge cases):
+node scripts/verify-match-live.mjs "$API"
+```
+
+### Live verification record (2026-09-16, Issue 5)
+
+- `/health` → 200 `{status:ok, registry:ok}` (~136 ms median, warm).
+- `/facilities` → 200, 14 facilities, contract shape exact, leak scan clean.
+- `/match-facilities` → 200 (~188 ms median client-side; 18–71 ms Lambda-side
+  per structured logs). All 7 categories: returned order, distances and scores
+  equal an INDEPENDENT recomputation (Haversine + 0.6/0.3/0.1) to 1e-6;
+  determinism proven (identical repeat calls); only category-accepting
+  facilities returned; `userLocation` echoed.
+- Validation battery: 422 invalid/missing category · 400 missing/out-of-range/
+  string coords · 400 malformed JSON · 400 empty body · 415 missing
+  Content-Type. Unsupported methods (GET/DELETE on POST route) → gateway 404 —
+  routes exist only for their defined methods, so the Lambda-level 405 guard is
+  defense-in-depth only. `PLASTIC` / `  plastic  ` normalize to canonical.
+- IAM (read from live roles): match/facilities/health roles = single scoped
+  `dynamodb:Scan`; classify = 4 scoped Bedrock ARNs + Scan + S3 `uploads/*`.
+  No wildcards. CORS: preflight echoes allowed origin only; unknown origins
+  get no ACAO header.
 ```
 
 ## 4. Error contract (stable for the frontend)
@@ -179,9 +208,44 @@ build clean.
   71/71 (6 files, ~3 s); frontend vitest 18/18 (4 files, ~2.3 s); root
   `tsc --noEmit` clean; `npm audit --omit=dev` = 0 vulnerabilities (both
   projects); CloudFormation reviewed line-by-line.
-- ⛔ NOT verified here (no SAM CLI installed): `sam validate`, `sam build`,
-  live deploy, real Bedrock latency through the deployed stack. Run §1 + §3 on
-  an AWS-enabled machine before demo day; §0's model IDs are already verified.
+- ✅ SAM CLI 1.166.2 installed (2026-09-16, winget/MSI) and BOTH checks executed
+  for real: `sam validate` → PASS; `sam build` → PASS (4 handler bundles in
+  `.aws-sam/build/`, `@aws-sdk/*` external, all four export `handler`).
+  Fixes the tooling surfaced in template.yaml: added the missing `Resources:`
+  wrapper, removed the unsupported `OutDir: dist` esbuild property, corrected
+  `Handler:` paths to entry-point basenames (SAM rewrites them at build time).
+  Build procedure: `cd backend && npm install`, then run SAM's builder with
+  esbuild on PATH:
+  `PATH="$(pwd)/node_modules/.bin:$PATH" sam build`
+  (esbuild is a devDependency; SAM's Python builder resolves it via PATH).
+- ✅ DEPLOYED (2026-09-16): dev stack `smartsort-backend-dev` in ap-south-1 is
+  CREATE_COMPLETE with API/Lambda/DynamoDB/S3/IAM/log-groups/budget verified
+  live; `/health` answers 200 (registry empty until seeding). Deploy-time early
+  validation exposed 2 more template bugs (Budget notifications outside
+  `Properties`; invalid `ApplicationLogGroupArn` on all 4 functions — correct
+  SAM key is `LogGroup`), both fixed. API base: see stack output `ApiBaseUrl`.
+- ✅ SEEDED + MATCHED (2026-09-16, Issue 4): dev table seeded with the 14
+  facilities (read back from DynamoDB and schema-validated); live
+  `GET /facilities` returns all 14 with the exact contract shape; live
+  `POST /match-facilities` ranking independently recomputed from the returned
+  registry and matched to 1e-6 (order, scores, Haversine distances); rejections
+  verified live (422 invalid category · 400 coords/body · 415 Content-Type);
+  CloudWatch shows 0 classify-and-match invocations while 8 match-facilities
+  invocations ran — the AI-free override path is proven end-to-end.
+- ⛔ FIRST BEDROCK INVOCATION ATTEMPT (2026-09-16, Issue 6): one real
+  POST /classify-and-match with a 3.8 KB synthetic bottle PNG → 503
+  CLASSIFICATION_UNAVAILABLE in 389 ms. Logs show AccessDeniedException on
+  BOTH models (primary apac.amazon.nova-lite-v1:0, then fallback
+  global.amazon.nova-2-lite-v1:0) — account-level model access is not yet
+  enabled (the AWS CLI catalog lists the models ACTIVE; entitlement is a
+  separate console switch). POSITIVE VERIFICATIONS from this attempt: the
+  hardened error path behaved exactly as designed (permanent-error → no
+  retry → immediate fallback → clean typed 503, no stack traces/secrets,
+  request-ID correlation intact), and image validation accepted a real PNG.
+  PENDING MANUAL STEP: enable model access (see runbook §0), then re-run
+  the single invocation.
+- ⛔ Still NOT verified: a SUCCESSFUL real Bedrock invocation, matching
+  after classification, S3 archival happy path.
 
 ## 10. Environment variables
 

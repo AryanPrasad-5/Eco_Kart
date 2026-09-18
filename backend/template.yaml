@@ -48,7 +48,6 @@ Metadata:
       Minify: true
       Target: es2022
       Format: cjs
-      OutDir: dist
       EntryPoints:
         - src/handlers/classify-and-match.ts
         - src/handlers/match-facilities.ts
@@ -58,260 +57,263 @@ Metadata:
         - '@aws-sdk/*'   # provided by the nodejs20.x Lambda runtime
 
 # ── Data ────────────────────────────────────────────────────────────────────
-FacilityTable:
-  Type: AWS::DynamoDB::Table
-  Properties:
-    # Stack-qualified so dev + prod stacks can coexist in one account/region.
-    TableName: !Sub '${AWS::StackName}-facilities'
-    BillingMode: PAY_PER_REQUEST
-    AttributeDefinitions:
-      - AttributeName: facility_id
-        AttributeType: S
-    KeySchema:
-      - AttributeName: facility_id
-        KeyType: HASH
-    SSESpecification:
-      SSEEnabled: true
-    # Hackathon decision: PITR ON (free for this size, one-command recovery).
-    # DeletionProtection intentionally OFF — the stack is disposable by design
-    # (facility data is 14 curated records fully re-seedable via seed/seed.mjs).
-    PointInTimeRecoverySpecification:
-      PointInTimeRecoveryEnabled: true
+Resources:
 
-UploadsBucket:
-  Type: AWS::S3::Bucket
-  UpdateReplacePolicy: Delete
-  DeletionPolicy: Delete
-  Properties:
-    # Stack-qualified (S3 names are global + lowercase-only → stack names must
-    # be lowercase and short enough to stay under the 63-char bucket limit).
-    BucketName: !Sub 'smartsort-uploads-${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
-    PublicAccessBlockConfiguration:
-      BlockPublicAcls: true
-      BlockPublicPolicy: true
-      IgnorePublicAcls: true
-      RestrictPublicBuckets: true
-    OwnershipControls:
-      Rules:
-        - ObjectOwnership: BucketOwnerEnforced
-    BucketEncryption:
-      ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: AES256
-    # Privacy: images may contain incidental personal info — 30-day retention,
-    # not indefinite (documented in README §8).
-    LifecycleConfiguration:
-      Rules:
-        - Id: expire-uploads
-          Status: Enabled
-          Prefix: uploads/
-          ExpirationInDays: 30
+  FacilityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      # Stack-qualified so dev + prod stacks can coexist in one account/region.
+      TableName: !Sub '${AWS::StackName}-facilities'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: facility_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: facility_id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      # Hackathon decision: PITR ON (free for this size, one-command recovery).
+      # DeletionProtection intentionally OFF — the stack is disposable by design
+      # (facility data is 14 curated records fully re-seedable via seed/seed.mjs).
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
-# ── API ─────────────────────────────────────────────────────────────────────
-HttpApi:
-  Type: AWS::Serverless::HttpApi
-  Properties:
-    StageName: '$default'
-    CorsConfiguration:
-      AllowOrigins:
-        - !Ref AllowedOrigin
-      AllowMethods: [GET, POST, OPTIONS]
-      AllowHeaders: [Content-Type]
-      MaxAge: 86400
-    AccessLogSettings:
-      DestinationArn: !GetAtt AccessLogs.Arn
-      Format: '{"requestId":"$context.requestId","route":"$context.routeKey","status":$context.status,"latency":"$context.responseLatency","ip":"$context.identity.sourceIp"}'
-    DefaultRouteSettings:
-      DetailedMetricsEnabled: true
-      ThrottlingBurstLimit: 20
-      ThrottlingRateLimit: 10
-    # Cost protection: the PAID AI route gets its own stricter throttle so
-    # abuse of free routes can never inflate Bedrock spend.
-    RouteSettings:
-      'POST /classify-and-match':
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      # Stack-qualified (S3 names are global + lowercase-only → stack names must
+      # be lowercase and short enough to stay under the 63-char bucket limit).
+      BucketName: !Sub 'smartsort-uploads-${AWS::StackName}-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # Privacy: images may contain incidental personal info — 30-day retention,
+      # not indefinite (documented in README §8).
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-uploads
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 30
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods: [GET, POST, OPTIONS]
+        AllowHeaders: [Content-Type]
+        MaxAge: 86400
+      AccessLogSettings:
+        DestinationArn: !GetAtt AccessLogs.Arn
+        Format: '{"requestId":"$context.requestId","route":"$context.routeKey","status":$context.status,"latency":"$context.responseLatency","ip":"$context.identity.sourceIp"}'
+      DefaultRouteSettings:
         DetailedMetricsEnabled: true
-        ThrottlingBurstLimit: 5
-        ThrottlingRateLimit: 2
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+      # Cost protection: the PAID AI route gets its own stricter throttle so
+      # abuse of free routes can never inflate Bedrock spend.
+      RouteSettings:
+        'POST /classify-and-match':
+          DetailedMetricsEnabled: true
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
 
-AccessLogs:
-  Type: AWS::Logs::LogGroup
-  Properties:
-    LogGroupName: !Sub '/smartsort/api-access-${AWS::StackName}'
-    RetentionInDays: 14
+  AccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/api-access-${AWS::StackName}'
+      RetentionInDays: 14
 
-# ── Lambda log groups (retention bounded — no infinite log costs) ───────────
-ClassifyLogGroup:
-  Type: AWS::Logs::LogGroup
-  Properties:
-    LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-classify-and-match'
-    RetentionInDays: 14
-MatchLogGroup:
-  Type: AWS::Logs::LogGroup
-  Properties:
-    LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-match-facilities'
-    RetentionInDays: 14
-FacilitiesLogGroup:
-  Type: AWS::Logs::LogGroup
-  Properties:
-    LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-facilities'
-    RetentionInDays: 14
-HealthLogGroup:
-  Type: AWS::Logs::LogGroup
-  Properties:
-    LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-health'
-    RetentionInDays: 14
+  # ── Lambda log groups (retention bounded — no infinite log costs) ───────────
+  ClassifyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-classify-and-match'
+      RetentionInDays: 14
+  MatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-match-facilities'
+      RetentionInDays: 14
+  FacilitiesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-facilities'
+      RetentionInDays: 14
+  HealthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-health'
+      RetentionInDays: 14
 
-# ── Cost budget (ALWAYS created; AlarmEmail is a required parameter) ──────────
-MonthlyCostBudget:
-  Type: AWS::Budgets::Budget
-  Properties:
-    Budget:
-      BudgetName: !Sub 'smartsort-monthly-${AWS::StackName}'
-      BudgetType: COST
-      TimeUnit: MONTHLY
-      BudgetLimit:
-        Amount: 25
-        Unit: USD
-    NotificationsWithSubscribers:
-      - SubscriptionType: ACTUAL
-        NotificationType: ACTUAL
-        Threshold: 80
-        ThresholdType: PERCENTAGE
-        Subscriber:
-          - SubscriptionType: EMAIL
-            Address: !Ref AlarmEmail
+  # ── Cost budget (ALWAYS created; AlarmEmail is a required parameter) ──────────
+  MonthlyCostBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub 'smartsort-monthly-${AWS::StackName}'
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 25
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: ACTUAL
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlarmEmail
 
-# ── Functions ───────────────────────────────────────────────────────────────
-ClassifyAndMatchFunction:
-  Type: AWS::Serverless::Function
-  Metadata: *esbuildProps
-  Properties:
-    FunctionName: !Sub '${AWS::StackName}-classify-and-match'
-    Handler: dist/handlers/classify-and-match.handler
-    MemorySize: 512
-    Timeout: 29                      # aligns with API Gateway's 29 s integration ceiling
-    LoggingConfig:
-      ApplicationLogGroupArn: !GetAtt ClassifyLogGroup.Arn
-      LogFormat: JSON
-      ApplicationLogLevel: INFO
-      SystemLogLevel: WARN
-    Policies:
-      - Statement:
-          # Bedrock invoke — the configured IDs are INFERENCE PROFILES, so the
-          # policy must grant the profile ARN (local region/account) AND the
-          # underlying foundation-model ARN across the profile's source regions
-          # (region-wildcard). Verified against ap-south-1 on 2026-09-16:
-          # primary = apac.amazon.nova-lite-v1:0, fallback = global.amazon.nova-2-lite-v1:0.
-          - Effect: Allow
-            Action: bedrock:InvokeModel
-            Resource:
-              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}'
-              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelIdFallback}'
-              - arn:aws:bedrock:*::foundation-model/amazon.nova-lite-v1:0
-              - arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0
-          - Effect: Allow
-            Action: dynamodb:Scan
-            Resource: !GetAtt FacilityTable.Arn
-          - Effect: Allow
-            Action: s3:PutObject
-            Resource: !Sub '${UploadsBucket.Arn}/uploads/*'
-    Environment:
-      Variables:
-        BEDROCK_MODEL_ID: !Ref BedrockModelId
-        BEDROCK_MODEL_ID_FALLBACK: !Ref BedrockModelIdFallback
-        CLASSIFY_TIMEOUT_MS: '8000'
-        UPLOADS_BUCKET: !Ref UploadsBucket
-        ARCHIVE_IMAGES: 'true'
-        ARCHIVE_TIMEOUT_MS: '2000'
-    Events:
-      Classify:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref HttpApi
-          Path: /classify-and-match
-          Method: POST
+  # ── Functions ───────────────────────────────────────────────────────────────
+  ClassifyAndMatchFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-classify-and-match'
+      Handler: classify-and-match.handler
+      MemorySize: 512
+      Timeout: 29                      # aligns with API Gateway's 29 s integration ceiling
+      LoggingConfig:
+        LogGroup: !Ref ClassifyLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            # Bedrock invoke — the configured IDs are INFERENCE PROFILES, so the
+            # policy must grant the profile ARN (local region/account) AND the
+            # underlying foundation-model ARN across the profile's source regions
+            # (region-wildcard). Verified against ap-south-1 on 2026-09-16:
+            # primary = apac.amazon.nova-lite-v1:0, fallback = global.amazon.nova-2-lite-v1:0.
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource:
+                - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}'
+                - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelIdFallback}'
+                - arn:aws:bedrock:*::foundation-model/amazon.nova-lite-v1:0
+                - arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0
+            - Effect: Allow
+              Action: dynamodb:Scan
+              Resource: !GetAtt FacilityTable.Arn
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub '${UploadsBucket.Arn}/uploads/*'
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_MODEL_ID_FALLBACK: !Ref BedrockModelIdFallback
+          CLASSIFY_TIMEOUT_MS: '8000'
+          UPLOADS_BUCKET: !Ref UploadsBucket
+          ARCHIVE_IMAGES: 'true'
+          ARCHIVE_TIMEOUT_MS: '2000'
+      Events:
+        Classify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /classify-and-match
+            Method: POST
 
-# The override path gets NO Bedrock permission — architectural guarantee that
-# /match-facilities can never invoke AI (matches the code-level guarantee).
-MatchFacilitiesFunction:
-  Type: AWS::Serverless::Function
-  Metadata: *esbuildProps
-  Properties:
-    FunctionName: !Sub '${AWS::StackName}-match-facilities'
-    Handler: dist/handlers/match-facilities.handler
-    MemorySize: 256
-    Timeout: 10
-    LoggingConfig:
-      ApplicationLogGroupArn: !GetAtt MatchLogGroup.Arn
-      LogFormat: JSON
-      ApplicationLogLevel: INFO
-      SystemLogLevel: WARN
-    Policies:
-      - Statement:
-          - Effect: Allow
-            Action: dynamodb:Scan
-            Resource: !GetAtt FacilityTable.Arn
-    Events:
-      Match:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref HttpApi
-          Path: /match-facilities
-          Method: POST
+  # The override path gets NO Bedrock permission — architectural guarantee that
+  # /match-facilities can never invoke AI (matches the code-level guarantee).
+  MatchFacilitiesFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-match-facilities'
+      Handler: match-facilities.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref MatchLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:Scan
+              Resource: !GetAtt FacilityTable.Arn
+      Events:
+        Match:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /match-facilities
+            Method: POST
 
-FacilitiesFunction:
-  Type: AWS::Serverless::Function
-  Metadata: *esbuildProps
-  Properties:
-    FunctionName: !Sub '${AWS::StackName}-facilities'
-    Handler: dist/handlers/facilities.handler
-    MemorySize: 256
-    Timeout: 10
-    LoggingConfig:
-      ApplicationLogGroupArn: !GetAtt FacilitiesLogGroup.Arn
-      LogFormat: JSON
-      ApplicationLogLevel: INFO
-      SystemLogLevel: WARN
-    Policies:
-      - Statement:
-          - Effect: Allow
-            Action: dynamodb:Scan
-            Resource: !GetAtt FacilityTable.Arn
-    Events:
-      List:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref HttpApi
-          Path: /facilities
-          Method: GET
+  FacilitiesFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-facilities'
+      Handler: facilities.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref FacilitiesLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:Scan
+              Resource: !GetAtt FacilityTable.Arn
+      Events:
+        List:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /facilities
+            Method: GET
 
-HealthFunction:
-  Type: AWS::Serverless::Function
-  Metadata: *esbuildProps
-  Properties:
-    FunctionName: !Sub '${AWS::StackName}-health'
-    Handler: dist/handlers/health.handler
-    MemorySize: 256
-    Timeout: 10
-    LoggingConfig:
-      ApplicationLogGroupArn: !GetAtt HealthLogGroup.Arn
-      LogFormat: JSON
-      ApplicationLogLevel: INFO
-      SystemLogLevel: WARN
-    Policies:
-      - Statement:
-          - Effect: Allow
-            Action: dynamodb:Scan
-            Resource: !GetAtt FacilityTable.Arn
-    Events:
-      Health:
-        Type: HttpApi
-        Properties:
-          ApiId: !Ref HttpApi
-          Path: /health
-          Method: GET
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-health'
+      Handler: health.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref HealthLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:Scan
+              Resource: !GetAtt FacilityTable.Arn
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /health
+            Method: GET
 
-# ── Outputs ─────────────────────────────────────────────────────────────────
+  # ── Outputs ─────────────────────────────────────────────────────────────────
 Outputs:
   ApiBaseUrl:
     Description: Base URL for VITE_API_BASE_URL

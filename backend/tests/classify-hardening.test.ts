@@ -22,7 +22,7 @@ vi.hoisted(() => {
   process.env.CLASSIFY_TIMEOUT_MS = '500';
 });
 
-import { classifyImage, classificationToolConfig, SYSTEM_PROMPT_TEST_ONLY } from '../src/services/classify';
+import { classifyImage, classificationToolConfig, SYSTEM_PROMPT_TEST_ONLY, validateVerdict } from '../src/services/classify';
 import { ClassificationError } from '../src/shared/errors';
 
 const IMAGE = { bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0]), mime: 'image/jpeg' as const };
@@ -68,6 +68,53 @@ describe('prompt safety (§6)', () => {
     // classifyImage builds messages from SYSTEM_PROMPT_TEST_ONLY + fixed text only;
     // assert the fixed user-turn exists and carries no template holes.
     expect(SYSTEM_PROMPT_TEST_ONLY).not.toContain('${');
+  });
+});
+
+describe('tool contract (§6) — canonical three-field output only', () => {
+  type ToolSchema = {
+    required: string[];
+    properties: Record<string, unknown>;
+  };
+  const toolSpec = (
+    classificationToolConfig.tools?.[0] as {
+      toolSpec: { inputSchema: { json: ToolSchema } };
+    }
+  ).toolSpec;
+
+  it('requires ONLY category, confidence, rationale — no reasoning fields', () => {
+    expect(toolSpec.inputSchema.json.required).toEqual(['category', 'confidence', 'rationale']);
+    expect(Object.keys(toolSpec.inputSchema.json.properties)).toEqual([
+      'category',
+      'confidence',
+      'rationale',
+    ]);
+    expect(JSON.stringify(classificationToolConfig)).not.toMatch(/step_/);
+  });
+
+  it('unexpected extra fields in model output never enter the application contract', () => {
+    const verdict = validateVerdict(
+      {
+        category: 'glass',
+        confidence: 0.7,
+        rationale: 'Clear jar with smooth walls.',
+        step_1_material: 'transparent and rigid',
+        internal_reasoning: 'eliminated paper because…',
+      },
+      'test-model',
+    );
+    expect(Object.keys(verdict).sort()).toEqual(['category', 'confidence', 'rationale']);
+  });
+
+  it('rejects tool inputs missing any canonical field', () => {
+    expect(() => validateVerdict({ confidence: 0.5, rationale: 'r' }, 'm')).toThrow(ClassificationError);
+    expect(() => validateVerdict({ category: 'metal', rationale: 'r' }, 'm')).toThrow(ClassificationError);
+    expect(() => validateVerdict({ category: 'metal', confidence: 0.5 }, 'm')).toThrow(ClassificationError);
+  });
+
+  it('asks for contamination awareness but never chain-of-thought or step fields', () => {
+    expect(SYSTEM_PROMPT_TEST_ONLY).toMatch(/grease|food waste/i);
+    expect(SYSTEM_PROMPT_TEST_ONLY).not.toMatch(/step-by-step|step_1|chain.of.thought/i);
   });
 });
 

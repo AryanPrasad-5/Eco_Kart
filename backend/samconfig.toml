@@ -3,8 +3,8 @@ version = 0.1
 
 [default]
 [default.build.parameters]
-cached = true
-parallel = true
+cached = false
+parallel = false
 
 [default.deploy.parameters]
 stack_name = "smartsort-backend"
