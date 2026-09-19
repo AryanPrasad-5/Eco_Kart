@@ -1,18 +1,206 @@
 /**
- * SmartSort — central type definitions.
- * Single source of truth for the data contract between the frontend,
- * the mock API layer, and (later) the real API Gateway/Lambda backend.
+ * WasteX — domain model.
+ *
+ * WasteX evolves SmartSort: the waste-classification core becomes the
+ * AI material-tagging assist inside Create Listing, and the facility
+ * registry becomes the verified-recycler roster. Marketplace primitives
+ * (materials, listings, offers, transactions) are new.
+ *
+ * The legacy SmartSort types (Facility, ClassificationResult, etc.) live
+ * at the bottom — still the contract of src/api/client.ts, mapped into
+ * WasteX domain objects at the edges.
  */
 
-/** The seven supported waste categories — strict union, extended nowhere else. */
-export type WasteCategory =
+/* ── Materials ──────────────────────────────────────────────────────── */
+
+export type Material =
   | 'plastic'
   | 'paper'
+  | 'cardboard'
   | 'metal'
   | 'glass'
-  | 'e-waste'
-  | 'organic'
-  | 'other';
+  | 'e-waste';
+
+export const MATERIALS: readonly Material[] = ['plastic', 'paper', 'cardboard', 'metal', 'glass', 'e-waste'] as const;
+
+export interface MaterialSpec {
+  avgPrice: number; // ₹/kg
+  priceUnit: '₹/kg';
+  typicalQty: string;
+  demand: 'High' | 'Moderate' | 'Seasonal';
+  /** 0–100 recyclability score. */
+  recyclability: number;
+  useCases: string[];
+  /** Commodity-chart series for the materials explorer. */
+  priceHistory: number[];
+}
+
+export const MATERIAL_SPECS: Record<Material, MaterialSpec> = {
+  plastic: {
+    avgPrice: 38,
+    priceUnit: '₹/kg',
+    typicalQty: '0.5–12 t',
+    demand: 'High',
+    recyclability: 82,
+    useCases: ['rPET food-grade pellets', 'Textile fibre', 'Moulded furniture'],
+    priceHistory: [31, 32, 34, 33, 35, 36, 38],
+  },
+  paper: {
+    avgPrice: 16,
+    priceUnit: '₹/kg',
+    typicalQty: '1–20 t',
+    demand: 'Moderate',
+    recyclability: 74,
+    useCases: ['Packaging board', 'Newsprint', 'Moulded pulp'],
+    priceHistory: [14, 15, 15, 16, 15, 16, 16],
+  },
+  cardboard: {
+    avgPrice: 14,
+    priceUnit: '₹/kg',
+    typicalQty: '2–30 t',
+    demand: 'High',
+    recyclability: 91,
+    useCases: ['Corrugated linerboard', 'Carton stock', 'Insulation board'],
+    priceHistory: [11, 12, 12, 13, 13, 14, 14],
+  },
+  metal: {
+    avgPrice: 62,
+    priceUnit: '₹/kg',
+    typicalQty: '0.2–8 t',
+    demand: 'High',
+    recyclability: 96,
+    useCases: ['Ferrous smelting charge', 'Aluminium billets', 'Copper rod'],
+    priceHistory: [54, 56, 57, 59, 60, 61, 62],
+  },
+  glass: {
+    avgPrice: 5,
+    priceUnit: '₹/kg',
+    typicalQty: '1–15 t',
+    demand: 'Seasonal',
+    recyclability: 88,
+    useCases: ['Container cullet', 'Fibreglass', 'Tile aggregate'],
+    priceHistory: [5, 5, 4, 5, 5, 5, 5],
+  },
+  'e-waste': {
+    avgPrice: 185,
+    priceUnit: '₹/kg',
+    typicalQty: '50–900 kg',
+    demand: 'High',
+    recyclability: 70,
+    useCases: ['Precious-metal recovery', 'Copper harness', 'Shredder feedstock'],
+    priceHistory: [150, 158, 165, 170, 176, 180, 185],
+  },
+};
+
+/* ── Quality grades ─────────────────────────────────────────────────── */
+
+export type QualityGrade = 'A' | 'B' | 'C';
+export const QUALITY_GRADES: readonly QualityGrade[] = ['A', 'B', 'C'] as const;
+
+export const QUALITY_META: Record<QualityGrade, { label: string; note: string }> = {
+  A: { label: 'Grade A', note: 'Sorted, contamination < 2%' },
+  B: { label: 'Grade B', note: 'Lightly mixed, contamination < 8%' },
+  C: { label: 'Grade C', note: 'Mixed load, contamination < 15%' },
+};
+
+/* ── Listings & offers ──────────────────────────────────────────────── */
+
+export type ListingStatus = 'available' | 'reserved' | 'traded' | 'draft';
+
+export interface Listing {
+  id: string;
+  seller: string;
+  sellerType: 'Business' | 'Residential community';
+  material: Material;
+  subtype: string;
+  quantityTonnes: number;
+  pricePerKg: number;
+  quality: QualityGrade;
+  city: string;
+  locality: string;
+  lat: number;
+  lng: number;
+  pickupFrom: string; // ISO date
+  description: string;
+  status: ListingStatus;
+  listedAt: string; // ISO date
+  views: number;
+  verified: boolean;
+}
+
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn';
+
+export interface Offer {
+  id: string;
+  listingId: string;
+  bidder: string;
+  pricePerKg: number;
+  quantityTonnes: number;
+  status: OfferStatus;
+  placedAt: string;
+  note?: string;
+}
+
+/* ── Transactions & pickups ─────────────────────────────────────────── */
+
+export type TransactionStageIndex = 0 | 1 | 2 | 3 | 4 | 5;
+
+export const TRANSACTION_STAGES = [
+  'Listing created',
+  'Offer received',
+  'Offer accepted',
+  'Pickup scheduled',
+  'Material collected',
+  'Payment completed',
+] as const;
+
+export interface Transaction {
+  id: string;
+  listingId: string;
+  counterparty: string;
+  material: Material;
+  quantityTonnes: number;
+  valueInr: number;
+  /** Index into TRANSACTION_STAGES the transaction has reached. */
+  stage: TransactionStageIndex;
+  openedAt: string;
+  direction: 'sold' | 'purchased';
+}
+
+export interface Pickup {
+  id: string;
+  transactionId: string;
+  partner: string;
+  material: Material;
+  quantityTonnes: number;
+  date: string; // ISO date
+  slot: string;
+  address: string;
+  status: 'scheduled' | 'in-progress' | 'completed';
+}
+
+/* ── Analytics ──────────────────────────────────────────────────────── */
+
+export interface MonthlyPoint {
+  month: string;
+  volume: number; // tonnes
+  revenue: number; // ₹
+}
+
+export interface ImpactStats {
+  wasteDivertedTonnes: number;
+  co2AvoidedTonnes: number;
+  economicValueInr: number;
+  recoveryRate: number; // 0–100
+}
+
+/* ── Roles ──────────────────────────────────────────────────────────── */
+
+export type Role = 'generator' | 'recycler';
+
+/* ── Legacy SmartSort model (still the src/api/client.ts contract) ──── */
+
+export type WasteCategory = 'plastic' | 'paper' | 'metal' | 'glass' | 'e-waste' | 'organic' | 'other';
 
 export const WASTE_CATEGORIES: readonly WasteCategory[] = [
   'plastic',
@@ -24,40 +212,32 @@ export const WASTE_CATEGORIES: readonly WasteCategory[] = [
   'other',
 ] as const;
 
-/** Display metadata for the category chips. */
-export const CATEGORY_META: Record<WasteCategory, { label: string; icon: string }> = {
-  plastic: { label: 'Plastic', icon: '🥤' },
-  paper: { label: 'Paper', icon: '📄' },
-  metal: { label: 'Metal', icon: '🥫' },
-  glass: { label: 'Glass', icon: '🍾' },
-  'e-waste': { label: 'E-waste', icon: '🔌' },
-  organic: { label: 'Organic', icon: '🥬' },
-  other: { label: 'Other', icon: '🗑️' },
-};
+/** Maps legacy classifier categories onto WasteX tradable materials. */
+export function categoryToMaterial(category: WasteCategory): Material | null {
+  switch (category) {
+    case 'plastic':
+    case 'paper':
+    case 'metal':
+    case 'glass':
+    case 'e-waste':
+      return category;
+    default:
+      return null; // organic / other are not tradable marketplace materials
+  }
+}
 
-/** Geographic coordinates. */
 export interface Location {
   lat: number;
   lng: number;
 }
 
-/** Source of the location used for matching — demo location is always labeled. */
-export type LocationSource = 'device' | 'demo' | 'manual';
-
-export interface ResolvedLocation extends Location {
-  source: LocationSource;
-}
-
-/** A recycling / scrap / reuse facility in the registry. */
 export interface Facility {
   facility_id: string;
   name: string;
   lat: number;
   lng: number;
   accepted_categories: WasteCategory[];
-  /** INR per kg, keyed by category. Empty object when the facility pays nothing. */
   payout_estimate: Partial<Record<WasteCategory, number>>;
-  /** Always "estimated" in the MVP — never presented as an offer. */
   payout_basis: 'estimated' | 'verified';
   verified: boolean;
   address: string;
@@ -67,52 +247,30 @@ export interface Facility {
   updated_at: string;
 }
 
-/** What the classifier returns. `confidence` is an AI signal, NOT a calibrated probability. */
+export interface FacilityMatch {
+  facility: Facility;
+  distance_km: number;
+  score: number;
+  beyondRadius: boolean;
+}
+
 export interface ClassificationResult {
   category: WasteCategory;
-  /** Model-generated confidence signal in [0, 1]. Displayed as "AI signal". */
   confidence: number;
   rationale: string;
 }
 
-/** A facility joined with distance + internal ranking score for one query. */
-export interface FacilityMatch {
-  facility: Facility;
-  distance_km: number;
-  /** Internal ranking score — never shown in the UI. */
-  score: number;
-  /** True when the facility lies beyond the 5 km scoring horizon. */
-  beyondRadius: boolean;
-}
-
-/** Response of POST /classify-and-match. */
 export interface ClassifyMatchResponse {
   classification: ClassificationResult;
   matches: FacilityMatch[];
   userLocation: Location;
 }
 
-/** Response of POST /match-facilities (override/manual path — no AI call). */
 export interface MatchFacilitiesResponse {
   matches: FacilityMatch[];
   userLocation: Location;
 }
 
-/** Phase machine driving the primary flow (spec §14). */
-export type Phase = 'capture' | 'classifying' | 'confirm' | 'results';
-
-/** Which nav view is active (spec §18 — deliberately minimal). */
-export type NavView = 'landing' | 'app' | 'about';
-
-/** Location acquisition outcome handled by the UI. */
-export type LocationStatus =
-  | { state: 'idle' }
-  | { state: 'acquiring' }
-  | { state: 'granted'; location: Location }
-  | { state: 'demo'; location: Location }
-  | { state: 'failed'; reason: 'denied' | 'timeout' | 'unavailable' };
-
-/** Errors surfaced by the API layer. */
 export class ApiError extends Error {
   constructor(
     message: string,

@@ -1,7 +1,43 @@
 # SmartSort Backend — production-hardened
 
 API Gateway HTTP API → Lambda (Node 20/TypeScript, esbuild via SAM) →
-**Amazon Bedrock (Nova Lite, Converse API)** + **DynamoDB** + private **S3** archive.
+**Amazon Rekognition (primary) / Amazon Bedrock Nova Lite (recovery path)** +
+**DynamoDB** + private **S3** archive.
+
+## 0a. Classification provider (ACTIVE: Rekognition)
+
+Bedrock is blocked at the ACCOUNT level in ap-south-1 (ValidationException
+"Operation not allowed" on both Nova profiles — reproduced via Lambda and a
+direct root-principal probe; see §9). The active provider is therefore
+**Amazon Rekognition DetectLabels** via `rekognition:DetectLabels` (no
+account entitlement switch needed):
+
+- **Seam**: handlers import `services/classifier.ts`, which dispatches on
+  `CLASSIFIER_PROVIDER` (`rekognition` deployed via template; code default
+  `bedrock` so existing tests need no env). `services/classify.ts` (Bedrock)
+  is untouched and recovers by redeploying with
+  `--parameter-overrides ClassifierProvider=bedrock` — zero code changes.
+- **Honesty boundary**: Rekognition is a GENERIC label detector ("Bottle",
+  "Plastic", "Mobile Phone"), NOT a waste classifier. A deterministic
+  two-tier mapper (`services/rekognition.ts`) converts labels into the
+  7-category contract: Tier 1 materials (Plastic, Glass, Metal, Aluminum,
+  Tin Can, Paper, Cardboard, Newspaper, Food, Fruit, Vegetable, Plant,
+  Flower, Electronics) beat Tier 2 objects (Bottle, Plastic Bag, Can, Book,
+  Mobile Phone, Laptop, Computer, Keyboard, Computer Mouse, Television,
+  Monitor). Highest-confidence match in the winning tier; exact ties break by
+  fixed priority (plastic, paper, metal, glass, e-waste, organic). No match →
+  `other`.
+- **Confidence is REAL, never invented**: the winning Rekognition label's
+  actual Confidence / 100 (AWS-calibrated CV signal). Unmapped detections →
+  `other`, capped at 0.5. `rationale` is a deterministic template citing the
+  winning label — no LLM text, no chain-of-thought.
+- **IAM**: `rekognition:DetectLabels` on `Resource: "*"` — DetectLabels is a
+  data-plane API taking image bytes inline and supports NO resource-level
+  permissions (AWS service authorization reference); this is service-mandated
+  scoping, on the classify role only. Bedrock IAM statement retained untouched
+  for rollback.
+- Tests: `tests/rekognition-classifier.test.ts` (SDK fully mocked; no live AWS
+  in CI). Zero mock data in the live path.
 
 Status: **production-quality MVP code** — validated via 71 backend + 18 frontend
 automated tests (all green, re-run 2026-09-16), strict TypeScript, 0
@@ -244,8 +280,22 @@ build clean.
   request-ID correlation intact), and image validation accepted a real PNG.
   PENDING MANUAL STEP: enable model access (see runbook §0), then re-run
   the single invocation.
-- ⛔ Still NOT verified: a SUCCESSFUL real Bedrock invocation, matching
-  after classification, S3 archival happy path.
+- ⛔ Still NOT verified: a successful real Bedrock invocation (blocked by the
+  account entitlement — now bypassed via Rekognition; recover when AWS fixes
+  access by redeploying with `ClassifierProvider=bedrock`).
+- ✅ REKOGNITION LIVE END-TO-END (2026-09-19): deployed with
+  `ClassifierProvider=rekognition`; ONE real request
+  POST /classify-and-match with a real 294 KB JPEG → HTTP 200 in one shot:
+  real DetectLabels (10 labels, 495 ms), honest `other` @ 0.5 (photo was not
+  waste — real photo, not a synthetic fixture), 3 ranked matches from the
+  real DynamoDB registry, image archived to
+  `uploads/2026-09-19/D70bygOxhcwEPVQ=.jpg` (AES256, private bucket) — the
+  first successful AI + archival path in project history. CloudWatch:
+  ClassificationSuccess{Model=rekognition-detect-labels} + MatchSuccess +
+  ArchiveSuccess, requestId correlation, no base64/secrets/stack traces.
+  IAM verified live: classify role = DetectLabels (Resource "*",
+  service-mandated) + untouched scoped Bedrock/DynamoDB/S3 statements.
+  Tests 96/96 (81 prior + 15 Rekognition); match harness re-passed live.
 
 ## 10. Environment variables
 

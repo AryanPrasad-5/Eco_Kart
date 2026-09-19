@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  @page { size: 1191px 1684px; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1191px; height: 1684px; background: #050505; }
+  body {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    color: #f5f7f5;
+    position: relative;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  /* ── Earthrise ─────────────────────────────────────────────── */
+  .earth-wrap {
+    position: absolute;
+    top: -300px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 860px;
+    height: 860px;
+  }
+  .earth {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-image: url("./public/textures/earth-day.jpg");
+    background-size: auto 100%; /* 2:1 texture fills height exactly — no tiling */
+    background-repeat: no-repeat;
+    background-position: 50% 18%;
+    box-shadow:
+      0 0 130px 10px rgba(43, 84, 176, 0.32),
+      0 0 26px 2px rgba(120, 160, 255, 0.2),
+      inset -90px -140px 220px rgba(0, 0, 0, 0.92),
+      inset 24px 34px 90px rgba(120, 160, 255, 0.1);
+  }
+  .earth-ring {
+    position: absolute;
+    inset: -26px;
+    border-radius: 50%;
+    border: 1px solid rgba(52, 226, 122, 0.4);
+  }
+  .earth-ring::after {
+    content: "";
+    position: absolute;
+    top: -3px; left: 50%;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #34e27a;
+    transform: translateX(-50%);
+  }
+
+  /* ── Telemetry row over the planet's lower limb ────────────── */
+  .telemetry {
+    position: absolute;
+    top: 560px;
+    left: 90px;
+    right: 90px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .telemetry div { text-align: center; }
+  .telemetry .k {
+    font-size: 11px;
+    letter-spacing: 0.34em;
+    color: #5f6862;
+  }
+  .telemetry .v {
+    margin-top: 8px;
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    color: #9aa39d;
+  }
+
+  /* ── Central type ──────────────────────────────────────────── */
+  .headline {
+    position: absolute;
+    top: 768px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 122px;
+    line-height: 1.04;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .headline small {
+    display: block;
+    margin-top: 34px;
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: #9aa39d;
+  }
+  .caption-rule {
+    position: absolute;
+    top: 1092px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 74px;
+    height: 1px;
+    background: #333836;
+  }
+  .caption {
+    position: absolute;
+    top: 1118px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.44em;
+    color: #9aa39d;
+  }
+
+  /* ── Recovery instrument ───────────────────────────────────── */
+  .recovery {
+    position: absolute;
+    left: 90px;
+    right: 90px;
+    top: 1258px;
+  }
+  .recovery .row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: #5f6862;
+  }
+  .recovery .row1 strong { color: #f5f7f5; font-weight: 500; font-size: 13px; }
+  .bar {
+    margin-top: 18px;
+    height: 10px;
+    border: 1px solid #333836;
+    border-radius: 6px;
+    position: relative;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 69.4px, rgba(255,255,255,0.10) 69.4px 70.4px);
+  }
+  .bar i {
+    position: absolute;
+    inset: 1px auto 1px 1px;
+    width: 94%;
+    border-radius: 5px;
+    background: linear-gradient(90deg, rgba(52,226,122,0.35), #34e27a);
+  }
+  .materials {
+    margin-top: 26px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    color: #5f6862;
+  }
+  .materials b { color: #9aa39d; font-weight: 500; }
+
+  /* ── Data strip ────────────────────────────────────────────── */
+  .strip {
+    position: absolute;
+    left: 90px; right: 90px;
+    top: 1436px;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid rgba(255,255,255,0.09);
+    padding-top: 26px;
+  }
+  .strip .cell { max-width: 30%; }
+  .strip .n {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .strip .l {
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: #5f6862;
+  }
+
+  /* ── Footer margin ─────────────────────────────────────────── */
+  .footer {
+    position: absolute;
+    left: 90px; right: 90px;
+    bottom: 58px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: #5f6862;
+  }
+  .footer .dot { color: #34e27a; }
+
+  /* right-edge altitude ruler */
+  .ruler {
+    position: absolute;
+    right: 34px;
+    top: 700px;
+    bottom: 120px;
+    width: 22px;
+    border-right: 1px solid #232725;
+  }
+  .ruler span {
+    position: absolute;
+    right: 6px;
+    transform: translateY(50%);
+    font-size: 8.5px;
+    letter-spacing: 0.18em;
+    color: #3c423f;
+    white-space: nowrap;
+  }
+  .ruler span::after {
+    content: "";
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    width: 8px; height: 1px;
+    background: #232725;
+  }
+</style>
+</head>
+<body>
+  <div class="earth-wrap">
+    <div class="earth"></div>
+    <div class="earth-ring"></div>
+  </div>
+
+  <div class="telemetry mono">
+    <div><div class="k">LAT</div><div class="v">12.9716° N</div></div>
+    <div><div class="k">LON</div><div class="v">77.5946° E</div></div>
+    <div><div class="k">ALT</div><div class="v">412 KM</div></div>
+    <div><div class="k">ORBIT</div><div class="v">Nº 0413</div></div>
+  </div>
+
+  <h1 class="headline">Look<br />after it.</h1>
+  <div class="headline" style="top:1010px; font-size:21px; letter-spacing:0.02em; font-weight:400;">SmartSort — every object has a next life.</div>
+
+  <div class="caption-rule"></div>
+  <div class="caption mono">SMARTSORT</div>
+
+  <div class="recovery">
+    <div class="row1 mono"><span>MATERIAL RECOVERY RATE</span><strong>94%</strong></div>
+    <div class="bar"><i></i></div>
+    <div class="materials mono">
+      <span><b>PLASTIC</b> 38</span>
+      <span><b>PAPER</b> 16</span>
+      <span><b>CARDBOARD</b> 14</span>
+      <span><b>METAL</b> 62</span>
+      <span><b>GLASS</b> 5</span>
+      <span><b>E-WASTE</b> 185</span>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="cell"><div class="n">12,840 t</div><div class="l mono">WASTE DIVERTED</div></div>
+    <div class="cell" style="text-align:center;"><div class="n">8,420 t</div><div class="l mono">CO₂e AVOIDED</div></div>
+    <div class="cell" style="text-align:right;"><div class="n">₹12.4M</div><div class="l mono">VALUE CREATED</div></div>
+  </div>
+
+  <div class="ruler mono">
+    <span style="top:0%;">412 KM</span>
+    <span style="top:25%;">309</span>
+    <span style="top:50%;">206</span>
+    <span style="top:75%;">103</span>
+    <span style="top:100%;">0 — SURFACE</span>
+  </div>
+
+  <div class="footer mono">
+    <span>SMARTSORT <span class="dot">·</span> ORBITAL REVERENCE <span class="dot">·</span> 2026</span>
+    <span>PHOTOGRAPHY — NASA BLUE MARBLE / PEXELS</span>
+  </div>
+</body>
+</html>

@@ -1,32 +1,56 @@
-import { CATEGORY_META, type Facility, type WasteCategory } from '../types';
+/** Formatting helpers — one vocabulary for the whole product. */
 
-/** Mandatory disclaimer, rendered with every payout (spec §7/§8). */
-export const PAYOUT_DISCLAIMER = 'Indicative market estimate — not an offer.';
+const inrPlain = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
-export function categoryLabel(category: WasteCategory): string {
-  return CATEGORY_META[category].label;
+/** ₹91,200 / ₹1.2L / ₹3.4Cr — Indian notation without the ambiguous "T". */
+export function formatInr(value: number): string {
+  if (value < 100_000) return `₹${inrPlain.format(Math.round(value))}`;
+  if (value < 10_000_000) return `₹${(value / 100_000).toLocaleString('en-IN', { maximumFractionDigits: 1 })}L`;
+  return `₹${(value / 10_000_000).toLocaleString('en-IN', { maximumFractionDigits: 2 })}Cr`;
 }
 
-export function categoryIcon(category: WasteCategory): string {
-  return CATEGORY_META[category].icon;
+/** ₹84,000 style plain money. */
+export function formatInrPlain(value: number): string {
+  return `₹${inrPlain.format(value)}`;
 }
 
-export function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m away`;
-  return `${km.toFixed(1)} km away`;
+/** 12.4K / 1.2M style compact number (international units, per spec). */
+export function formatCompact(value: number): string {
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 }
 
-export function formatPayout(facility: Facility, category: WasteCategory): string {
-  const rate = facility.payout_estimate[category];
-  if (rate === undefined) return 'Drop-off accepted';
-  return `₹${rate}/kg`;
+/** ₹12.4M — international millions, as the brief's stat formats. */
+export function formatInrMillions(value: number): string {
+  return `₹${(value / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`;
 }
 
-/** Human hours line — operating_hours is already "Mon–Sat 9:00–18:00" style. */
-export function formatHours(facility: Facility): string {
-  return facility.operating_hours;
+/** 2,340 plain Indian-grouping number. */
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-IN').format(value);
 }
 
-export function directionsUrl(facility: Facility): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${facility.lat},${facility.lng}`;
+/** 2.4 t / 820 kg — picks the unit sensibly. */
+export function formatTonnes(tonnes: number): string {
+  if (tonnes < 1) return `${Math.round(tonnes * 1000)} kg`;
+  return `${tonnes.toLocaleString('en-IN', { maximumFractionDigits: 1 })} t`;
+}
+
+/** ₹38/kg price label. */
+export function formatPricePerKg(price: number): string {
+  return `₹${price}/kg`;
+}
+
+/** Estimated total value for a listing. */
+export function estimateValue(pricePerKg: number, quantityTonnes: number): number {
+  return Math.round(pricePerKg * quantityTonnes * 1000);
+}
+
+/** 24 Sep 2026 — short, unambiguous. */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** 24 Sep — for tight table cells. */
+export function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }

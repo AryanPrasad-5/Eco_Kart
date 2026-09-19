@@ -5,6 +5,11 @@
  * With VITE_API_BASE_URL unset → `mockApi` (built-in offline demo mode).
  * With it set → `httpApi`, the real API Gateway backend. Same signatures,
  * so no component ever changes. Mock data lives exclusively in src/mock.
+ *
+ * EcoKart production rule (P0-1): a PRODUCTION build MUST have
+ * VITE_API_BASE_URL configured — if it is missing, getApi() throws a clear
+ * configuration error instead of silently serving mock data. Mocks are for
+ * unit tests and offline dev only, never the live/demo path.
  */
 
 import type {
@@ -139,6 +144,15 @@ export const httpApi: SmartSortApi = {
 };
 
 export function getApi(): SmartSortApi {
+  // Production safety guard (EcoKart P0-1): a production build without
+  // VITE_API_BASE_URL must fail loudly — never silently serve mock data.
+  if (import.meta.env.PROD && !API_BASE) {
+    throw new Error(
+      'EcoKart configuration error: VITE_API_BASE_URL is not set in this production build. ' +
+        'The live application must talk to the real API Gateway backend — mock data is ' +
+        'not allowed outside unit tests.',
+    );
+  }
   return API_BASE ? httpApi : mockApi;
 }
 

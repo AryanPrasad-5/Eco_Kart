@@ -29,6 +29,9 @@ export const config = {
   uploadsBucket: str(process.env.UPLOADS_BUCKET, ''),
   archiveImages: str(process.env.ARCHIVE_IMAGES, 'true') !== 'false',
 
+  /** Active classification provider. Code default = 'bedrock' (keeps existing
+   *  tests self-contained); the deployed template sets 'rekognition'. */
+  classifierProvider: str(process.env.CLASSIFIER_PROVIDER, 'bedrock'),
   bedrockModelId: str(process.env.BEDROCK_MODEL_ID, 'apac.amazon.nova-lite-v1:0'),
   bedrockModelIdFallback: str(process.env.BEDROCK_MODEL_ID_FALLBACK, 'global.amazon.nova-2-lite-v1:0'),
 

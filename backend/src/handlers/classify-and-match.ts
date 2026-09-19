@@ -16,7 +16,7 @@ import { ClassificationError, HttpError, respondWithError } from '../shared/erro
 import { readJsonObject, validateImagePayload, validateLocation } from '../shared/validate';
 import { setRequestId, startTimer, log, metric } from '../shared/observability';
 import { archiveImage } from '../shared/archive';
-import { classifyImage } from '../services/classify';
+import { classifyImage } from '../services/classifier';
 import { matchFacilities } from '../services/facilities';
 
 const ROUTE = 'classify-and-match';

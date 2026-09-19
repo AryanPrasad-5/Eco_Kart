@@ -24,6 +24,14 @@ Parameters:
     Description: >
       Fallback inference profile used if the primary fails (verified ACTIVE in
       ap-south-1 on 2026-09-16; different model generation for real diversity).
+  ClassifierProvider:
+    Type: String
+    Default: 'rekognition'
+    AllowedValues: [rekognition, bedrock]
+    Description: >
+      Active classification provider. rekognition = primary (works without the
+      Bedrock account entitlement); bedrock = intact recovery path for when
+      account model access is restored (rollback: one parameter, zero code).
   AlarmEmail:
     Type: String
     Description: >
@@ -204,6 +212,14 @@ Resources:
             # underlying foundation-model ARN across the profile's source regions
             # (region-wildcard). Verified against ap-south-1 on 2026-09-16:
             # primary = apac.amazon.nova-lite-v1:0, fallback = global.amazon.nova-2-lite-v1:0.
+            # Rekognition data-plane APIs (DetectLabels) accept image bytes
+            # inline and support NO resource-level permissions — Resource "*"
+            # is the narrowest AWS permits (service authorization reference).
+            # Single action, this role only; all other roles keep zero
+            # Rekognition permissions. Documented service-level behavior.
+            - Effect: Allow
+              Action: rekognition:DetectLabels
+              Resource: '*'
             - Effect: Allow
               Action: bedrock:InvokeModel
               Resource:
@@ -219,6 +235,7 @@ Resources:
               Resource: !Sub '${UploadsBucket.Arn}/uploads/*'
       Environment:
         Variables:
+          CLASSIFIER_PROVIDER: !Ref ClassifierProvider
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           BEDROCK_MODEL_ID_FALLBACK: !Ref BedrockModelIdFallback
           CLASSIFY_TIMEOUT_MS: '8000'

@@ -1,12 +1,10 @@
 /**
- * Mock classification engine (spec §4/§12).
- *
- * Deterministic per image: an FNV-1a hash of the image bytes selects a
- * verdict, so the same photo always classifies the same way — essential
- * for rehearsals and for the demo scenario. Confidence lands in the
- * "AI signal" band the UI expects; ~1 in 6 images lands below 0.6 to
- * exercise the low-signal path. Rationales speak in material terms and
- * never claim accuracy or training we don't have.
+ * Mock classification engine — now the AI material-tagging assist inside
+ * Create Listing. Deterministic per image: an FNV-1a hash of the image
+ * bytes selects a verdict, so the same photo always classifies the same
+ * way. Confidence lands in the "AI signal" band the UI expects; ~1 in 6
+ * images lands below 0.6 to exercise the low-signal path. Rationales
+ * speak in material terms and never claim accuracy we don't have.
  */
 
 import type { ClassificationResult, WasteCategory } from '../types';
@@ -87,11 +85,11 @@ export function classifyImage(base64: string): ClassificationResult {
   };
 }
 
-/** Staged loading messages shown while the (mock) pipeline runs (spec §4). */
+/** Staged loading messages shown while the (mock) tagging pipeline runs. */
 export const CLASSIFICATION_STAGES = [
-  'Analyzing your waste…',
+  'Analyzing the photo…',
   'Identifying material composition…',
-  'Finding nearby recycling options…',
+  'Matching against tradable materials…',
 ] as const;
 
 /** Realistic total latency for the mock pipeline. */
