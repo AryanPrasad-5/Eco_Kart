@@ -9,10 +9,11 @@ import { Modal } from '../components/ui/Modal';
 import { Timeline } from '../components/ui/Timeline';
 import { GradeBadge, StatusBadge } from '../components/ui/Badge';
 import { Table, TBody, TD, TH, THead, TR } from '../components/ui/Table';
-import { MapView } from '../components/MapView';
+import { LocationDistanceCard } from '../components/LocationDistanceCard';
 import { useToast } from '../hooks/useToast';
 import { getApi } from '../api/client';
 import { LISTINGS, OFFERS, TRANSACTIONS } from '../data/listings';
+import { fetchListing, recordToListing } from '../api/listings';
 import { estimateValue, formatDate, formatInrPlain, formatPricePerKg, formatTonnes } from '../lib/format';
 import { MATERIAL_TO_CATEGORY } from '../lib/materialCategory';
 import { MATERIAL_SPECS, type FacilityMatch, type Listing } from '../types';
@@ -23,10 +24,10 @@ import { MATERIAL_SPECS, type FacilityMatch, type Listing } from '../types';
  * visualized here, never recalculated. Fetch is skipped when the lot
  * coordinates are invalid.
  */
-function useNearbyMatches(listing: Listing): FacilityMatch[] {
+function useNearbyMatches(listing: Listing | null): FacilityMatch[] {
   const [matches, setMatches] = useState<FacilityMatch[]>([]);
   useEffect(() => {
-    if (!Number.isFinite(listing.lat) || !Number.isFinite(listing.lng)) return;
+    if (!listing || !Number.isFinite(listing.lat) || !Number.isFinite(listing.lng)) return;
     let cancelled = false;
     getApi()
       .matchFacilities(MATERIAL_TO_CATEGORY[listing.material], { lat: listing.lat, lng: listing.lng })
@@ -40,8 +41,36 @@ function useNearbyMatches(listing: Listing): FacilityMatch[] {
     return () => {
       cancelled = true;
     };
-  }, [listing.id, listing.material, listing.lat, listing.lng]);
+  }, [listing?.id, listing?.material, listing?.lat, listing?.lng]);
   return matches;
+}
+
+/**
+ * Live persisted listing for user-created lots (Phase 4). Sample lots stay
+ * client-side; API failures degrade to samples/not-found, never fabricated data.
+ */
+function usePersistedListing(id: string): { live: Listing | null; checked: boolean } {
+  const [live, setLive] = useState<Listing | null>(null);
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setLive(null);
+    setChecked(false);
+    fetchListing(id)
+      .then((r) => {
+        if (!cancelled) setLive(r ? recordToListing(r) : null);
+      })
+      .catch(() => {
+        // API unreachable - sample lots still render; no invented listing.
+      })
+      .finally(() => {
+        if (!cancelled) setChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+  return { live, checked };
 }
 
 /** A tiny deterministic lot visual — bale/ingot pattern per material. */
@@ -84,13 +113,24 @@ function MaterialVisual({ listing }: { listing: Listing }) {
 }
 
 export function ListingDetails({ id }: { id: string }) {
-  const listing = LISTINGS.find((l) => l.id === id);
   const { toast } = useToast();
   const [offerOpen, setOfferOpen] = useState(false);
   const [price, setPrice] = useState('');
   const [qty, setQty] = useState('');
   const [errors, setErrors] = useState<{ price?: string; qty?: string }>({});
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const persisted = usePersistedListing(id);
+  const sample = LISTINGS.find((l) => l.id === id);
+  const listing = sample ?? persisted.live;
+  const nearbyMatches = useNearbyMatches(listing);
+
+  if (!listing && !persisted.checked) {
+    return (
+      <DashboardLayout role="generator" title="Listing">
+        <div className="rounded-lg border border-dashed border-line px-6 py-20 text-center text-sm text-ink-faint">Loading listing…</div>
+      </DashboardLayout>
+    );
+  }
 
   if (!listing) {
     return (
@@ -112,7 +152,6 @@ export function ListingDetails({ id }: { id: string }) {
   const estValue = estimateValue(listing.pricePerKg, listing.quantityTonnes);
   const offers = OFFERS.filter((o) => o.listingId === listing.id);
   const history = TRANSACTIONS.filter((t) => t.listingId === listing.id);
-  const nearbyMatches = useNearbyMatches(listing);
 
   const openOffer = () => {
     setPrice(String(listing.pricePerKg));
@@ -191,28 +230,12 @@ export function ListingDetails({ id }: { id: string }) {
             <p className="px-5 py-4 text-sm leading-relaxed text-ink-soft">{listing.description}</p>
           </Card>
 
-          <Card>
-            <CardHeader
-              title="Location"
-              subtitle="Pickup zone and verified recyclers nearby"
-              action={
-                nearbyMatches.length > 0 ? (
-                  <span className="font-mono text-[11px] text-ink-faint">
-                    {nearbyMatches.length} recycler{nearbyMatches.length === 1 ? '' : 's'} within range
-                  </span>
-                ) : undefined
-              }
-            />
-            <div className="p-4">
-              <MapView
-                center={{ lat: listing.lat, lng: listing.lng }}
-                matches={nearbyMatches}
-                selectedFacilityId={selectedFacilityId}
-                onSelectFacility={setSelectedFacilityId}
-                caption="Your pickup location with ranked recyclers — tap a pin for details."
-              />
-            </div>
-          </Card>
+          <LocationDistanceCard
+            listing={listing}
+            matches={nearbyMatches}
+            selectedFacilityId={selectedFacilityId}
+            onSelectFacility={setSelectedFacilityId}
+          />
 
           <Card>
             <CardHeader title="Transaction history" subtitle="All trades for this seller's material" />

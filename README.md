@@ -40,12 +40,33 @@ deployment). The build receives three Vite env vars — `VITE_API_BASE_URL`,
 Amplify) — so the deployed bundle targets the real API Gateway and Amazon
 Location. The map key's referrer allow-list includes the Amplify domain.
 `amplify.yml` defines the GitHub-connected build (`nvm use 20` → `npm ci` →
-`npm run build` → `dist`); hash routing needs no SPA rewrites. Backend CORS
-still allows localhost only — the Amplify origin is added in the next issue.
+`npm run build` → `dist`); hash routing needs no SPA rewrites.
+
+### CORS
+
+Backend CORS is pinned to exactly two explicit origins (no wildcard):
+`http://localhost:5173` (Vite dev) and
+`https://main.dpp2josj8mc9h.amplifyapp.com` (production). The list is static in
+`backend/template.yaml` (`HttpApi → CorsConfiguration.AllowOrigins` + the
+Lambda-side `ALLOWED_ORIGIN` env) — verified live: both origins receive their
+exact ACAO echo on preflight and real responses, other origins receive none.
+To change the Amplify domain, update the two AllowOrigins entries (template
+parameter block is gone; intrinsics are not usable inside
+`x-amazon-apigateway-cors`).
 
 Frontend: React 18 + Vite + TypeScript + Tailwind CSS v4 + Framer Motion + Recharts + react-three-fiber. Backend: serverless AWS — API Gateway, Lambda, Bedrock, DynamoDB, S3 (see [`backend/README.md`](backend/README.md)).
 
 ---
+
+
+### Authentication + user listings (Phases 3-5)
+- Cognito user pool `ap-south-1_RC5nTIYAz` (public web client, email + password, SRP / USER_PASSWORD / refresh flows).
+- Frontend session: `src/auth/cognito.ts` (zero-dependency IDP client) + `src/auth/AuthContext.tsx`; the ID token is the API bearer.
+- New API routes: `POST /listings` (JWT), `GET /listings/{id}` (public), `GET /my-listings` (JWT, owner-scoped via the GSI on ownerId).
+- Listings persist in the separate `smartsort-backend-dev-listings` DynamoDB table; `ownerId` always comes from the verified JWT sub, never the request body.
+- Publish flow: anonymous users are redirected to sign-in with their draft preserved; a real device-geolocation fix (when permitted) is stored as pickup coordinates - no fabricated data anywhere.
+- SAM note: the inline `AWS::Serverless::HttpApi` authorizer cannot be updated in place by CloudFormation (identity-source / JWT changes are silently skipped). If authorizer config ever changes, delete + redeploy with a new logical id and verify with `aws apigatewayv2 get-authorizers`.
+- Physical phone verification is intentionally deferred: responsive/auth/map behavior is verified with automated viewport probes (360-1440px) and desktop E2E; a physical-device checklist remains for the owner. No physical-device verification is claimed.
 
 ## 🌟 Key Features
 

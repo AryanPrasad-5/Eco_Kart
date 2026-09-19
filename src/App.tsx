@@ -10,11 +10,14 @@ import { RecyclerDashboard } from './pages/RecyclerDashboard';
 import { Transactions, TransactionDetail } from './pages/Transactions';
 import { Analytics } from './pages/Analytics';
 import { ImpactPage } from './pages/Impact';
+import { SignIn, SignUp } from './pages/Auth';
+import { MyListings } from './pages/MyListings';
+import { AuthProvider } from './auth/AuthContext';
 
 /** The Earth-first experience is its own chunk — the product loads without it. */
 const ExperiencePage = lazy(() => import('./experience/ExperiencePage'));
 
-export default function App() {
+function AppRoutes() {
   const route = useHashRoute();
 
   // scroll to top on page change (in-page anchors don't change the route)
@@ -59,13 +62,26 @@ export default function App() {
     case 'impact':
       page = <ImpactPage />;
       break;
+    case 'my-listings':
+      page = <MyListings />;
+      break;
+    case 'signin':
+      page = <SignIn />;
+      break;
+    case 'signup':
+      page = <SignUp />;
+      break;
     default:
       page = experience;
   }
 
   return (
     <ToastProvider>
-      {page}
+      <AuthProvider>{page}</AuthProvider>
     </ToastProvider>
   );
+}
+
+export default function App() {
+  return <AppRoutes />;
 }

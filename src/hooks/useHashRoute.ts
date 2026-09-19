@@ -11,6 +11,9 @@ export type Route =
   | { name: 'marketplace' }
   | { name: 'listing'; id: string }
   | { name: 'create-listing' }
+  | { name: 'my-listings' }
+  | { name: 'signin' }
+  | { name: 'signup' }
   | { name: 'dashboard' }
   | { name: 'recycler' }
   | { name: 'transactions' }
@@ -32,6 +35,12 @@ export function parseHash(hash: string): Route {
       return param ? { name: 'listing', id: param } : { name: 'marketplace' };
     case 'create-listing':
       return { name: 'create-listing' };
+    case 'my-listings':
+      return { name: 'my-listings' };
+    case 'signin':
+      return { name: 'signin' };
+    case 'signup':
+      return { name: 'signup' };
     case 'dashboard':
       return { name: 'dashboard' };
     case 'recycler':

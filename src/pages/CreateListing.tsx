@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -20,6 +20,9 @@ import { compressImage, fileToBase64 } from '../lib/compress';
 import { categoryToMaterial, MATERIALS, QUALITY_GRADES, type Material, type QualityGrade } from '../types';
 import { MATERIAL_SPECS } from '../types';
 import { estimateValue, formatInrPlain, formatPricePerKg } from '../lib/format';
+import { getDeviceCoords, setDeviceCoords } from '../lib/deviceCoords';
+import { createListing } from '../api/listings';
+import { useAuth } from '../auth/AuthContext';
 
 /* ── wizard model ───────────────────────────────────────────────────── */
 
@@ -98,6 +101,10 @@ function AiTagPanel({ onPick }: { onPick: (m: Material, note: string) => void })
       const base64 = compressed.base64 ?? (await fileToBase64(file));
       // Demo hook: "*fail*" filenames exercise the AI-down path.
       if (file.name.toLowerCase().includes('fail')) throw new Error('service unavailable');
+      // Facility ranking uses a fixed reference point (the exchange's home
+      // region); the response's echoed location must never feed device coords —
+      // pickup coordinates come only from publish-time real geolocation, or
+      // stay null (honest unavailable state).
       const response = await getApi().classifyAndMatch(base64, { lat: 12.9716, lng: 77.5946 });
       const material = categoryToMaterial(response.classification.category);
       setPreviewUrl((prev) => {
@@ -197,14 +204,29 @@ function AiTagPanel({ onPick }: { onPick: (m: Material, note: string) => void })
 
 export function CreateListing() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
+  const [publishedId, setPublishedId] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   // stable for the lifetime of the wizard — never re-rolled on re-render
+  // resume a draft saved before the sign-in redirect (Phase 4 publish gate)
+  useEffect(() => {
+    if (!user) return;
+    const raw = sessionStorage.getItem('ecokart.listingDraft');
+    if (!raw) return;
+    sessionStorage.removeItem('ecokart.listingDraft');
+    try {
+      const saved = JSON.parse(raw) as Partial<Draft>;
+      setDraft((d) => ({ ...d, ...saved }));
+    } catch {
+      // corrupted draft - ignore, start fresh
+    }
+  }, [user]);
   const [draftListingId] = useState(() => `LX-${1042 + Math.floor(Math.random() * 40)}`);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -244,12 +266,51 @@ export function CreateListing() {
       setErrors(all);
       return;
     }
+    if (!user) {
+      toast('info', 'Sign in to publish', 'Create a free account so this listing is owned and managed by you.');
+      sessionStorage.setItem('ecokart.listingDraft', JSON.stringify(draft));
+      window.location.hash = '#/signin';
+      return;
+    }
     setPublishing(true);
-    window.setTimeout(() => {
-      setPublishing(false);
-      setPublished(true);
-      toast('success', 'Listing published successfully', `${draft.material} · ${draft.quantity} t is now visible to verified recyclers.`);
-    }, 900);
+    // One-time real device geolocation - the honest pickup coordinates.
+    // Denied/unavailable -> null coords, never a fabricated location.
+    const submit = (coords: { lat: number; lng: number } | null) => {
+      if (coords) setDeviceCoords(coords.lat, coords.lng);
+      const saved = getDeviceCoords();
+      createListing({
+        material: draft.material as string,
+        subtype: draft.subtype,
+        quantityTonnes: Number(draft.quantity),
+        quality: draft.quality as string,
+        pricePerKg: Number(draft.price),
+        city: draft.city,
+        locality: draft.locality,
+        pickupLatitude: saved ? saved.lat : null,
+        pickupLongitude: saved ? saved.lng : null,
+        pickupFrom: draft.pickupDate,
+        description: draft.description,
+      })
+        .then((res) => {
+          setPublishedId(res.listingId);
+          setPublished(true);
+          toast('success', 'Listing published', `${res.listingId} is live - owned by your account.`);
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'Publishing failed - please try again.';
+          toast('error', 'Publish failed', msg);
+        })
+        .finally(() => setPublishing(false));
+    };
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => submit({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => submit(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+      );
+    } else {
+      submit(null);
+    }
   };
 
   return (
@@ -525,8 +586,8 @@ export function CreateListing() {
         ) : published ? (
           <div className="flex items-center gap-2">
             <Badge tone="accent">Published</Badge>
-            <Button variant="secondary" onClick={() => (window.location.hash = '#/dashboard')}>
-              Go to dashboard
+            <Button variant="secondary" onClick={() => (window.location.hash = '#/listing/' + encodeURIComponent(publishedId))}>
+              View listing
             </Button>
           </div>
         ) : (

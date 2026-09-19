@@ -11,10 +11,46 @@ import {
   HelpCircle,
   Menu,
   X,
-  Building2,
-  Factory,
+  LogIn,
+  LogOut,
+  Package,
+  UserRound,
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 import { Logo } from '../components/Navbar';
+
+/** Real account block (Phase 3): live Cognito identity, sign-in/out actions. */
+function AccountBlock({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
+  const { user, signOut } = useAuth();
+  const go = (hash: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.hash = hash;
+    onNavigate?.();
+  };
+  if (!user) {
+    return (
+      <div className='mt-3 space-y-2 rounded-lg border border-line bg-surface-2/60 p-3'>
+        <p className='text-[11px] leading-relaxed text-ink-faint'>Sign in to publish listings and manage them from any device.</p>
+        <a href='#/signin' onClick={go('#/signin')} className='flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-void transition-colors hover:bg-accent/85'><LogIn size={14} aria-hidden /> Sign in</a>
+      </div>
+    );
+  }
+  return (
+    <div className='mt-3 rounded-lg border border-line bg-surface-2/60 p-3'>
+      <div className='flex items-center gap-3'>
+        <span className='grid h-9 w-9 shrink-0 place-items-center rounded-md border border-accent-line bg-accent-soft text-accent' aria-hidden><UserRound size={16} /></span>
+        <div className='min-w-0'>
+          <p className='truncate text-[13px] font-medium text-ink'>{user.email}</p>
+          <p className='truncate text-[11px] text-ink-faint'>Signed in</p>
+        </div>
+      </div>
+      <div className='mt-3 flex items-center gap-2'>
+        <a href='#/my-listings' onClick={go('#/my-listings')} className='flex flex-1 items-center justify-center gap-1.5 rounded-md border border-line px-2 py-1.5 text-xs text-ink-soft transition-colors hover:bg-white/5 hover:text-ink'><Package size={13} aria-hidden /> My listings</a>
+        <button onClick={() => { signOut(); onNavigate?.(); }} className='flex flex-1 items-center justify-center gap-1.5 rounded-md border border-line px-2 py-1.5 text-xs text-ink-soft transition-colors hover:bg-white/5 hover:text-ink'><LogOut size={13} aria-hidden /> Sign out</button>
+      </div>
+    </div>
+  );
+}
 
 type Role = 'generator' | 'recycler';
 
@@ -23,6 +59,7 @@ const NAV: Record<Role, Array<{ label: string; hash: string; icon: typeof Layout
     { label: 'Overview', hash: '#/dashboard', icon: LayoutDashboard },
     { label: 'Marketplace', hash: '#/marketplace', icon: Store },
     { label: 'Listings', hash: '#/create-listing', icon: ListPlus },
+    { label: 'My Listings', hash: '#/my-listings', icon: Package },
     { label: 'Transactions', hash: '#/transactions', icon: ArrowLeftRight },
     { label: 'Pickups', hash: '#/transactions', icon: Truck },
     { label: 'Analytics', hash: '#/analytics', icon: ChartColumn },
@@ -87,19 +124,8 @@ function SidebarContent({ role, onNavigate }: { role: Role; onNavigate?: () => v
         <a href="#/dashboard" onClick={(e) => { e.preventDefault(); window.location.hash = '#/dashboard'; onNavigate?.(); }} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-ink">
           <HelpCircle size={16} strokeWidth={1.8} aria-hidden /> Help
         </a>
-        <div className="mt-3 flex items-center gap-3 rounded-lg border border-line bg-surface-2/60 p-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-accent-line bg-accent-soft text-accent" aria-hidden>
-            {role === 'generator' ? <Building2 size={16} /> : <Factory size={16} />}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium text-ink">
-              {role === 'generator' ? 'Prestige Falcon City' : 'PETVerse Plastics'}
-            </p>
-            <p className="truncate text-[11px] text-ink-faint">
-              {role === 'generator' ? 'Generator · Bengaluru' : 'Verified recycler'}
-            </p>
-          </div>
-        </div>
+        <AccountBlock onNavigate={onNavigate} />
+
       </div>
     </div>
   );

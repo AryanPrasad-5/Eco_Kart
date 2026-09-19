@@ -3,7 +3,10 @@ import type * as maplibregl from 'maplibre-gl';
 import type { FacilityMatch, Location } from '../types';
 
 interface MapViewProps {
+  /** Listing pickup location -> red Seller pickup pin. */
   center: Location;
+  /** Real device location -> green You marker; absent = never faked. */
+  userLocation?: Location | null | undefined;
   /** Ranked matches → numbered pins; empty → single pickup-zone marker. */
   matches?: FacilityMatch[] | undefined;
   /** Caption under the map. */
@@ -45,6 +48,10 @@ function isValidCoords(loc: Location | undefined | null): boolean {
   );
 }
 
+/** Red pickup pin (inline SVG, dark-theme matched, no external asset). */
+const PICKUP_PIN_SVG =
+  '<svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg"><path d="M13 0C5.8 0 0 5.8 0 13c0 9.1 10.9 19.6 12.3 20.9a1 1 0 0 0 1.4 0C15.1 32.6 26 22.1 26 13 26 5.8 20.2 0 13 0Z" fill="#e25c4a"/><circle cx="13" cy="13" r="5" fill="#0a0c0b"/></svg>';
+
 /* ── Dark-map CSS injected once (maplibre uses canvas; Tailwind can't reach in) ── */
 
 const MAP_CSS_ID = 'wastex-maplibre-theme';
@@ -56,6 +63,8 @@ const MAP_CSS = `
 .mx-marker-fac{display:grid;place-items:center;width:26px;height:26px;border-radius:9999px;background:#121514;border:2px solid #333836;color:#9aa39d;font:600 11px "IBM Plex Mono",monospace;cursor:pointer;transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease;}
 .mx-marker-fac:hover{border-color:#34e27a66;color:#f5f7f5;transform:scale(1.08);}
 .mx-marker-fac.is-selected{border-color:#34e27a;background:#0d1f16;color:#34e27a;transform:scale(1.18);box-shadow:0 0 0 3px rgba(52,226,122,.18),0 0 16px rgba(52,226,122,.4);}
+.mx-marker-pickup{display:grid;place-items:center;width:30px;height:34px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.65));}
+.mx-marker-pickup svg{display:block;}
 .maplibregl-popup{z-index:30;}
 .maplibregl-popup-content{background:#0d0f0e!important;color:#f5f7f5!important;border:1px solid #333836;border-radius:10px;padding:0!important;box-shadow:0 12px 40px rgba(0,0,0,.55)!important;min-width:196px;overflow:hidden;}
 .maplibregl-popup-tip{border-top-color:#333836!important;border-bottom-color:#333836!important;}
@@ -101,11 +110,12 @@ function popupHtml(m: FacilityMatch): string {
 
 /* ── Live map: Amazon Location + MapLibre ─────────────────────────────── */
 
-function LiveMap({ center, matches = [], caption, selectedFacilityId, onSelectFacility }: MapViewProps) {
+function LiveMap({ center, userLocation, matches = [], caption, selectedFacilityId, onSelectFacility }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const pickupMarkerRef = useRef<maplibregl.Marker | null>(null);
   const popupsRef = useRef<maplibregl.Popup[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -202,16 +212,37 @@ function LiveMap({ center, matches = [], caption, selectedFacilityId, onSelectFa
       const validMatches = matches.filter((m) => isValidCoords({ lat: m.facility.lat, lng: m.facility.lng }));
       const bounds = new lib.LngLatBounds();
 
-      if (isValidCoords(center)) {
+      // Red pickup pin — the listing real coordinates; removed when invalid.
+      if (pickupMarkerRef.current && !isValidCoords(center)) {
+        pickupMarkerRef.current.remove();
+        pickupMarkerRef.current = null;
+      } else if (isValidCoords(center)) {
+        if (!pickupMarkerRef.current) {
+          const el = document.createElement('div');
+          el.className = 'mx-marker-pickup';
+          el.innerHTML = PICKUP_PIN_SVG;
+          pickupMarkerRef.current = new lib.Marker({ element: el }).setLngLat([center.lng, center.lat]).addTo(map);
+        } else {
+          pickupMarkerRef.current.setLngLat([center.lng, center.lat]);
+        }
+        bounds.extend([center.lng, center.lat]);
+      }
+
+      // Green You marker — only ever a real device position, never a fallback.
+      const userPos: Location | null = userLocation && isValidCoords(userLocation) ? { lat: userLocation.lat, lng: userLocation.lng } : null;
+      if (userMarkerRef.current && !userPos) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      } else if (userPos) {
         if (!userMarkerRef.current) {
           const el = document.createElement('div');
           el.className = 'mx-marker-user';
           el.innerHTML = '<span></span><i></i>';
-          userMarkerRef.current = new lib.Marker({ element: el }).setLngLat([center.lng, center.lat]).addTo(map);
+          userMarkerRef.current = new lib.Marker({ element: el }).setLngLat([userPos.lng, userPos.lat]).addTo(map);
         } else {
-          userMarkerRef.current.setLngLat([center.lng, center.lat]);
+          userMarkerRef.current.setLngLat([userPos.lng, userPos.lat]);
         }
-        bounds.extend([center.lng, center.lat]);
+        bounds.extend([userPos.lng, userPos.lat]);
       }
 
       validMatches.forEach((m, i) => {
@@ -260,7 +291,7 @@ function LiveMap({ center, matches = [], caption, selectedFacilityId, onSelectFa
       };
     }
     // matches array identity changes when results change → re-render markers.
-  }, [matches, center, failed, mapReady, select]);
+  }, [matches, center, userLocation, failed, mapReady, select]);
 
   /** Marker highlight synced from the facility list. */
   useEffect(() => {
@@ -282,7 +313,7 @@ function LiveMap({ center, matches = [], caption, selectedFacilityId, onSelectFa
     return () => document.removeEventListener('click', handler);
   }, [select]);
 
-  if (failed) return <SchematicMap center={center} matches={matches} caption={caption} />;
+  if (failed) return <SchematicMap center={center} userLocation={userLocation} matches={matches} caption={caption} />;
 
   return (
     <figure className="overflow-hidden rounded-lg border border-line bg-[#0a0c0b]">
@@ -304,7 +335,7 @@ function LiveMap({ center, matches = [], caption, selectedFacilityId, onSelectFa
 
 /* ── Schematic fallback: zero-cost, dev-safe, list still carries the data ── */
 
-function SchematicMap({ center, matches, caption, selectedFacilityId }: MapViewProps) {
+function SchematicMap({ center, userLocation, matches, caption, selectedFacilityId }: MapViewProps) {
   const facilityMatches = matches ?? [];
   const bounds = useMemo(() => {
     const lats = [center.lat, ...facilityMatches.map((m) => m.facility.lat)];
@@ -326,7 +357,9 @@ function SchematicMap({ center, matches, caption, selectedFacilityId }: MapViewP
     y: 100 - ((lat - bounds.minLat) / bounds.spanLat) * 100,
   });
 
-  const user = toXY(center.lat, center.lng);
+  const hasUser = Boolean(userLocation && isValidCoords(userLocation));
+  const user = userLocation && isValidCoords(userLocation) ? toXY(userLocation.lat, userLocation.lng) : toXY(center.lat, center.lng);
+  const pickup = toXY(center.lat, center.lng);
 
   return (
     <figure className="overflow-hidden rounded-lg border border-line bg-[#0a0c0b]">
@@ -345,12 +378,26 @@ function SchematicMap({ center, matches, caption, selectedFacilityId }: MapViewP
           })}
         </svg>
 
-        <span className="absolute z-10 -translate-x-1/2 -translate-y-1/2" style={{ left: `${user.x}%`, top: `${user.y}%` }}>
-          <span className="relative grid h-7 w-7 place-items-center">
-            <span className="absolute h-7 w-7 animate-ping rounded-full bg-accent/25" aria-hidden />
-            <span className="h-3.5 w-3.5 rounded-full border-2 border-[#0a0c0b] bg-accent shadow-[0_0_10px_rgba(52,226,122,0.6)]" />
+        {hasUser && (
+          <span className="absolute z-10 -translate-x-1/2 -translate-y-1/2" style={{ left: `${user.x}%`, top: `${user.y}%` }} title="You (device location)">
+            <span className="relative grid h-7 w-7 place-items-center">
+              <span className="absolute h-7 w-7 animate-ping rounded-full bg-accent/25" aria-hidden />
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-[#0a0c0b] bg-accent shadow-[0_0_10px_rgba(52,226,122,0.6)]" />
+            </span>
           </span>
-        </span>
+        )}
+        {isValidCoords(center) && (
+          <span
+            className="absolute z-10 -translate-x-1/2 -translate-y-full"
+            style={{ left: `${pickup.x}%`, top: `${pickup.y}%` }}
+            title="Seller pickup location"
+          >
+            <svg width="22" height="29" viewBox="0 0 26 34" aria-hidden>
+              <path d="M13 0C5.8 0 0 5.8 0 13c0 9.1 10.9 19.6 12.3 20.9a1 1 0 0 0 1.4 0C15.1 32.6 26 22.1 26 13 26 5.8 20.2 0 13 0Z" fill="#e25c4a" />
+              <circle cx="13" cy="13" r="5" fill="#0a0c0b" />
+            </svg>
+          </span>
+        )}
 
         {facilityMatches.map((m, i) => {
           const p = toXY(m.facility.lat, m.facility.lng);

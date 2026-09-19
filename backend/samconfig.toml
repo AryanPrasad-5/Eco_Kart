@@ -13,11 +13,10 @@ resolve_s3 = true
 s3_prefix = "smartsort-backend"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
-# DEV origin (Vite dev server) is the default deploy path — the wildcard CORS
-# default in template.yaml is only reachable by explicit override.
+# DEV/PROD origins are set statically in template.yaml (localhost Vite dev
+# server + the Amplify production domain). No AllowedOrigin override is needed;
+# if the Amplify domain ever changes, update AllowOrigins in template.yaml.
 # AlarmEmail is deliberately NOT set here: it is a REQUIRED parameter, so the
 # first `sam deploy` aborts until you add a real address here or pass
 #   --parameter-overrides AlarmEmail=you@example.com
-# For the production/Amplify deployment also override the origin:
-#   sam deploy --parameter-overrides AllowedOrigin=https://<amplify-domain> AlarmEmail=<email>
-parameter_overrides = ["AllowedOrigin=http://localhost:5173"]
+parameter_overrides = ["AlarmEmail=mailforaryan05@gmail.com"]

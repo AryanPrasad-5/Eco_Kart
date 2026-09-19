@@ -6,12 +6,6 @@ Description: >
 
 # ── Parameters ──────────────────────────────────────────────────────────────
 Parameters:
-  AllowedOrigin:
-    Type: String
-    Default: '*'
-    Description: >
-      CORS origin allowed to call the API. DEV DEFAULT '*' — production MUST set
-      this to the Amplify app domain, e.g. https://main.d1234.amplifyapp.com.
   BedrockModelId:
     Type: String
     Default: 'apac.amazon.nova-lite-v1:0'
@@ -46,7 +40,7 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
-        ALLOWED_ORIGIN: !Ref AllowedOrigin
+        ALLOWED_ORIGIN: 'http://localhost:5173,https://main.dpp2josj8mc9h.amplifyapp.com'
         TABLE_NAME: !Ref FacilityTable
 
 Metadata:
@@ -61,6 +55,9 @@ Metadata:
         - src/handlers/match-facilities.ts
         - src/handlers/facilities.ts
         - src/handlers/health.ts
+        - src/handlers/create-listing.ts
+        - src/handlers/get-listing.ts
+        - src/handlers/my-listings.ts
       External:
         - '@aws-sdk/*'   # provided by the nodejs20.x Lambda runtime
 
@@ -123,10 +120,21 @@ Resources:
       StageName: '$default'
       CorsConfiguration:
         AllowOrigins:
-          - !Ref AllowedOrigin
+          - http://localhost:5173
+          - https://main.dpp2josj8mc9h.amplifyapp.com
         AllowMethods: [GET, POST, OPTIONS]
-        AllowHeaders: [Content-Type]
+        AllowHeaders: [Content-Type, Authorization]
         MaxAge: 86400
+      Auth:
+        Authorizers:
+          CognitoJwt2:
+            AuthorizerType: JWT
+            IdentitySource:
+              - '$request.header.Authorization'
+            JwtConfiguration:
+              Audience:
+                - !Ref UserPoolClient
+              Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
       AccessLogSettings:
         DestinationArn: !GetAtt AccessLogs.Arn
         Format: '{"requestId":"$context.requestId","route":"$context.routeKey","status":$context.status,"latency":"$context.responseLatency","ip":"$context.identity.sourceIp"}'
@@ -190,6 +198,76 @@ Resources:
           Subscribers:
             - SubscriptionType: EMAIL
               Address: !Ref AlarmEmail
+
+  # ── Listings (Phase 4) ──────────────────────────────────────────────────────
+  ListingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-listings'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: listingId
+          AttributeType: S
+        - AttributeName: ownerId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: listingId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema:
+            - AttributeName: ownerId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  ListingsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/smartsort/lambda/${AWS::StackName}-listings'
+      RetentionInDays: 14
+
+  # ── Authentication (Phase 3) — Cognito user pool + JWT authorizer ──────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-users'
+      AutoVerifiedAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      UsernameAttributes: [email]
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${AWS::StackName}-web'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
 
   # ── Functions ───────────────────────────────────────────────────────────────
   ClassifyAndMatchFunction:
@@ -330,8 +408,114 @@ Resources:
             Path: /health
             Method: GET
 
+  CreateListingFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-create-listing'
+      Handler: create-listing.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref ListingsLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt ListingsTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !GetAtt ListingsTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub '${ListingsTable.Arn}/index/gsi1'
+      Environment:
+        Variables:
+          LISTINGS_TABLE_NAME: !Ref ListingsTable
+      Events:
+        Create:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /listings
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwt2
+
+  GetListingFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-get-listing'
+      Handler: get-listing.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref ListingsLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt ListingsTable.Arn
+      Environment:
+        Variables:
+          LISTINGS_TABLE_NAME: !Ref ListingsTable
+      Events:
+        Read:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /listings/{listingId}
+            Method: GET
+
+  MyListingsFunction:
+    Type: AWS::Serverless::Function
+    Metadata: *esbuildProps
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-my-listings'
+      Handler: my-listings.handler
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref ListingsLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub '${ListingsTable.Arn}/index/gsi1'
+      Environment:
+        Variables:
+          LISTINGS_TABLE_NAME: !Ref ListingsTable
+      Events:
+        Mine:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /my-listings
+            Method: GET
+            Auth:
+              Authorizer: CognitoJwt2
+
   # ── Outputs ─────────────────────────────────────────────────────────────────
 Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
   ApiBaseUrl:
     Description: Base URL for VITE_API_BASE_URL
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'

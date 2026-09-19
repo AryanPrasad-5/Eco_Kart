@@ -26,6 +26,7 @@ export const config = {
   /** Locked-down CORS origin — Amplify domain in prod, localhost in dev. */
   allowedOrigin: str(process.env.ALLOWED_ORIGIN, '*'),
   tableName: str(process.env.TABLE_NAME, ''),
+  listingsTableName: str(process.env.LISTINGS_TABLE_NAME, ''),
   uploadsBucket: str(process.env.UPLOADS_BUCKET, ''),
   archiveImages: str(process.env.ARCHIVE_IMAGES, 'true') !== 'false',
 

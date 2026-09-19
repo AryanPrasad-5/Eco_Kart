@@ -7,7 +7,7 @@ import { Button } from './ui/Button';
 /** A listing rendered as a tradeable instrument: quantity × price = value. */
 export function MarketplaceCard({ listing }: { listing: Listing }) {
   return (
-    <article className="group relative flex flex-col rounded-lg border border-line bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-line hover:bg-surface-2">
+    <article className="group relative flex min-w-0 flex-col rounded-lg border border-line bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-line hover:bg-surface-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">

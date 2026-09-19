@@ -13,7 +13,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-lg border border-line bg-surface ${
+      className={`min-w-0 rounded-lg border border-line bg-surface ${
         interactive ? 'transition-colors duration-200 hover:border-line-strong hover:bg-surface-2' : ''
       } ${className}`}
     >
