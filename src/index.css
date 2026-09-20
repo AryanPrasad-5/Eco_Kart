@@ -524,3 +524,10 @@
     opacity: 1;
   }
 }
+
+
+
+@layer base {
+  button:not(:disabled), [role="button"], a[href], summary, select, label[for] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
