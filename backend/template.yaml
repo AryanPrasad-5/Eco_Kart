@@ -40,7 +40,7 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
-        ALLOWED_ORIGIN: 'http://localhost:5173,https://main.dpp2josj8mc9h.amplifyapp.com'
+        ALLOWED_ORIGIN: 'http://localhost:5173,https://main.d3hns30c3l57w9.amplifyapp.com'
         TABLE_NAME: !Ref FacilityTable
 
 Metadata:
@@ -121,7 +121,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins:
           - http://localhost:5173
-          - https://main.dpp2josj8mc9h.amplifyapp.com
+          - https://main.d3hns30c3l57w9.amplifyapp.com
         AllowMethods: [GET, POST, OPTIONS]
         AllowHeaders: [Content-Type, Authorization]
         MaxAge: 86400
