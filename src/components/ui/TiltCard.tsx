@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useTransform, HTMLMotionProps } from 'framer-motion';
 
-interface TiltCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface TiltCardProps extends Omit<HTMLMotionProps<'div'>, 'style' | 'className'> {
   children: React.ReactNode;
   disabled?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export const TiltCard: React.FC<TiltCardProps> = ({ children, disabled = false, className = '', style, ...props }) => {

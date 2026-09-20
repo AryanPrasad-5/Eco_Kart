@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRef, useEffect, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const COLORS = [
@@ -24,7 +24,6 @@ function Bins() {
               <lineBasicMaterial color={color} opacity={0.5} transparent />
             </lineSegments>
           </mesh>
-          {/* Inside fill to simulate some content */}
           <mesh position={[0, 0.2, 0]}>
             <boxGeometry args={[0.7, 0.4, 0.7]} />
             <meshStandardMaterial color={color} transparent opacity={0.4} />
@@ -61,13 +60,10 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
   const groupRef = useRef<THREE.Group>(null);
   const itemsRef = useRef<THREE.Mesh[]>([]);
 
-  // We will have one active item falling at a time.
-  // It falls from y=3 to y=0.5 (scan ring), pauses briefly,
-  // then arcs into one of the bins.
   const state = useRef({
     t: 0,
     itemIndex: 0,
-    phase: 0, // 0: falling to ring, 1: scanning, 2: arcing to bin
+    phase: 0, 
   });
 
   useFrame((_, delta) => {
@@ -76,23 +72,21 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
 
     if (!itemsRef.current[0]) return;
 
-    // Reset all items to hidden initially
     itemsRef.current.forEach((mesh, i) => {
-      if (i !== s.itemIndex) {
+      if (mesh && i !== s.itemIndex) {
         mesh.visible = false;
       }
     });
 
     const activeItem = itemsRef.current[s.itemIndex];
+    if (!activeItem) return;
+    
     activeItem.visible = true;
 
-    // Bin target X positions based on material index
-    // Material mapping: 0=plastic, 1=paper, 2=cardboard, 3=metal, 4=glass, 5=ewaste
     const targetX = -2.5 + s.itemIndex * 1.0;
     const targetY = -1.6;
 
     if (s.phase === 0) {
-      // Falling to ring
       const progress = Math.min(s.t / 1.0, 1);
       activeItem.position.set(0, 3 - progress * 2.5, 0);
       activeItem.rotation.x += delta * 2;
@@ -107,7 +101,6 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
         s.t = 0;
       }
     } else if (s.phase === 1) {
-      // Scanning (hover briefly)
       activeItem.position.y = 0.5 + Math.sin(s.t * 10) * 0.05;
       activeItem.rotation.y += delta * 4;
 
@@ -121,9 +114,10 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
           "JAR - GLASS - 94%",
           "CIRCUIT - E-WASTE - 82%"
         ];
-        labelRef.current.innerText = labels[s.itemIndex];
-        labelRef.current.style.color = COLORS[s.itemIndex];
-        labelRef.current.style.borderColor = COLORS[s.itemIndex];
+        const color = COLORS[s.itemIndex] as string;
+        labelRef.current.innerText = labels[s.itemIndex] as string;
+        labelRef.current.style.color = color;
+        labelRef.current.style.borderColor = color;
       }
 
       if (s.t > 1.2) {
@@ -131,20 +125,15 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
         s.t = 0;
       }
     } else if (s.phase === 2) {
-      // Arcing to bin
       const progress = Math.min(s.t / 0.8, 1);
-      
-      // Arc math
       const startX = 0;
       const startY = 0.5;
-      
       const currentX = startX + (targetX - startX) * progress;
-      // Parabola for Y
       const arcHeight = 1.0;
       const currentY = startY + (targetY - startY) * progress + Math.sin(progress * Math.PI) * arcHeight;
 
       activeItem.position.set(currentX, currentY, 0);
-      activeItem.scale.setScalar(1 - progress * 0.5); // Shrink as it goes in
+      activeItem.scale.setScalar(1 - progress * 0.5);
       activeItem.rotation.x += delta * 4;
       activeItem.rotation.y += delta * 4;
 
@@ -164,35 +153,29 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
 
   return (
     <group ref={groupRef}>
-      {/* Plastic Bottle */}
       <mesh ref={(el) => (itemsRef.current[0] = el!)} visible={false}>
         <cylinderGeometry args={[0.2, 0.2, 0.8, 16]} />
-        <meshStandardMaterial color={COLORS[0]} roughness={0.2} metalness={0.1} />
+        <meshStandardMaterial color={COLORS[0] as string} roughness={0.2} metalness={0.1} />
       </mesh>
-      {/* Paper Block */}
       <mesh ref={(el) => (itemsRef.current[1] = el!)} visible={false}>
         <boxGeometry args={[0.6, 0.2, 0.4]} />
-        <meshStandardMaterial color={COLORS[1]} roughness={0.8} />
+        <meshStandardMaterial color={COLORS[1] as string} roughness={0.8} />
       </mesh>
-      {/* Cardboard Box */}
       <mesh ref={(el) => (itemsRef.current[2] = el!)} visible={false}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
-        <meshStandardMaterial color={COLORS[2]} roughness={0.9} />
+        <meshStandardMaterial color={COLORS[2] as string} roughness={0.9} />
       </mesh>
-      {/* Metal Can */}
       <mesh ref={(el) => (itemsRef.current[3] = el!)} visible={false}>
         <cylinderGeometry args={[0.25, 0.25, 0.6, 16]} />
-        <meshStandardMaterial color={COLORS[3]} roughness={0.3} metalness={0.8} />
+        <meshStandardMaterial color={COLORS[3] as string} roughness={0.3} metalness={0.8} />
       </mesh>
-      {/* Glass Jar */}
       <mesh ref={(el) => (itemsRef.current[4] = el!)} visible={false}>
         <cylinderGeometry args={[0.3, 0.3, 0.5, 16]} />
-        <meshStandardMaterial color={COLORS[4]} transparent opacity={0.6} roughness={0.1} />
+        <meshStandardMaterial color={COLORS[4] as string} transparent opacity={0.6} roughness={0.1} />
       </mesh>
-      {/* E-Waste Board */}
       <mesh ref={(el) => (itemsRef.current[5] = el!)} visible={false}>
         <boxGeometry args={[0.7, 0.05, 0.4]} />
-        <meshStandardMaterial color={COLORS[5]} roughness={0.5} metalness={0.6} />
+        <meshStandardMaterial color={COLORS[5] as string} roughness={0.5} metalness={0.6} />
       </mesh>
     </group>
   );
@@ -201,15 +184,14 @@ function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> 
 export default function HeroScene() {
   const labelRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Performance: only one WebGL context visible at a time, pause rendering when off-screen
-  // We use IntersectionObserver to pause the frameloop when out of view
   const [active, setActive] = useState(true);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setActive(entry.isIntersecting);
+      (entries) => {
+        if (entries[0]) {
+          setActive(entries[0].isIntersecting);
+        }
       },
       { threshold: 0.1 }
     );
