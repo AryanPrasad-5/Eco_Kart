@@ -1,10 +1,10 @@
-# WasteX
+# Smart Sort
 
 **Waste isn't waste. It's inventory.**
 
-WasteX is a B2B waste-trading marketplace: businesses and residential communities list recyclable materials — plastic, paper, cardboard, metal, glass, e-waste — and verified recyclers discover them, place offers, and arrange pickup through a transparent, price-indexed exchange. The financial infrastructure for the circular economy.
+Smart Sort is a B2B waste-trading marketplace: businesses and residential communities list recyclable materials — plastic, paper, cardboard, metal, glass, e-waste — and verified recyclers discover them, place offers, and arrange pickup through a transparent, price-indexed exchange. The financial infrastructure for the circular economy.
 
-WasteX is the evolution of the SmartSort hackathon MVP: the AI waste-classification core (Amazon Rekognition via a swappable API layer) lives on as the **AI material-tagging assist** in the listing flow, and the verified facility registry survives as the **verified-recycler roster**.
+Smart Sort is the evolution of the SmartSort hackathon MVP: the AI waste-classification core (Amazon Rekognition via a swappable API layer) lives on as the **AI material-tagging assist** in the listing flow, and the verified facility registry survives as the **verified-recycler roster**.
 
 ## Live backend configuration
 
@@ -104,7 +104,7 @@ Frontend: React 18 + Vite + TypeScript + Tailwind CSS v4 + Framer Motion + Recha
 
 ```
 .
-├── src/                # WasteX frontend (React application)
+├── src/                # Smart Sort frontend (React application)
 │   ├── api/            # Swappable API client (mock fallback + real backend)
 │   ├── components/     # UI kit (ui/), landing sections (landing/), marketplace, maps, 3D hero
 │   ├── layouts/        # DashboardLayout (sidebar shell for app pages)
