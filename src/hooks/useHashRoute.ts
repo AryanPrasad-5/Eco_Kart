@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 /**
  * Minimal hash router — SmartSort ships as one deployable bundle, so hash
  * routes keep every page deep-linkable without server rewrites.
- * `#/` is the Earth-first experience; the product landing lives at #/product.
+ * `#/` is the product landing; the Earth-first experience lives at #/story.
  */
 export type Route =
   | { name: 'experience' }
@@ -32,6 +32,8 @@ export function parseHash(hash: string): Route {
   switch (head) {
     case 'product':
       return { name: 'product' };
+    case 'story':
+      return { name: 'experience' };
     case 'marketplace':
       return { name: 'marketplace' };
     case 'listing':
@@ -63,7 +65,7 @@ export function parseHash(hash: string): Route {
     case 'help':
       return { name: 'help' };
     default:
-      return { name: 'experience' };
+      return { name: 'product' };
   }
 }
 

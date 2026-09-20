@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { navigate } from '../hooks/useHashRoute';
 
 const LINKS = [
-  { label: 'The Story', hash: '#/' },
+  { label: 'The Story', hash: '#/story' },
   { label: 'Marketplace', hash: '#/marketplace' },
   { label: 'How It Works', anchor: '#how-it-works' },
   { label: 'For Businesses', anchor: '#for-businesses' },
