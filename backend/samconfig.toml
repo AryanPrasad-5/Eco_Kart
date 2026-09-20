@@ -7,7 +7,7 @@ cached = false
 parallel = false
 
 [default.deploy.parameters]
-stack_name = "smartsort-backend"
+stack_name = "smartsort-backend-dev"
 region = "ap-south-1"
 resolve_s3 = true
 s3_prefix = "smartsort-backend"

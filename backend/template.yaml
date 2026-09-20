@@ -129,8 +129,12 @@ Resources:
         Authorizers:
           CognitoJwt2:
             AuthorizerType: JWT
-            IdentitySource:
-              - '$request.header.Authorization'
+            # Scalar form (per AWS OpenAPI extension docs). A list here makes SAM
+            # emit a non-conformant ARRAY identitySource into the embedded OpenAPI
+            # body; API Gateway's importer then renders it as the literal string
+            # "[$request.header.Authorization]", breaking every JWT route after
+            # each deploy. Scalar in → scalar out → import stays correct.
+            IdentitySource: '$request.header.Authorization'
             JwtConfiguration:
               Audience:
                 - !Ref UserPoolClient
