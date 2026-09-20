@@ -1,8 +1,8 @@
-# WasteX
+# SmartSort
 
 **Waste isn't waste. It's inventory.**
 
-WasteX is a B2B waste-trading marketplace: businesses and residential communities list recyclable materials — plastic, paper, cardboard, metal, glass, e-waste — and verified recyclers discover them, place offers, and arrange pickup through a transparent, price-indexed exchange. The financial infrastructure for the circular economy.
+SmartSort is a B2B waste-trading marketplace: businesses and residential communities list recyclable materials — plastic, paper, cardboard, metal, glass, e-waste — and verified recyclers discover them, place offers, and arrange pickup through a transparent, price-indexed exchange. The financial infrastructure for the circular economy.
 
 WasteX is the evolution of the SmartSort hackathon MVP: the AI waste-classification core (Amazon Rekognition via a swappable API layer) lives on as the **AI material-tagging assist** in the listing flow, and the verified facility registry survives as the **verified-recycler roster**.
 
