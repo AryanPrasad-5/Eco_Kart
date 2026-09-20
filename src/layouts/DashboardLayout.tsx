@@ -118,10 +118,10 @@ function SidebarContent({ role, onNavigate }: { role: Role; onNavigate?: () => v
       </nav>
 
       <div className="border-t border-line px-3 py-4">
-        <a href="#/dashboard" onClick={(e) => { e.preventDefault(); window.location.hash = '#/dashboard'; onNavigate?.(); }} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-ink">
+        <a href="#/settings" onClick={(e) => { e.preventDefault(); window.location.hash = '#/settings'; onNavigate?.(); }} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-ink">
           <Settings size={16} strokeWidth={1.8} aria-hidden /> Settings
         </a>
-        <a href="#/dashboard" onClick={(e) => { e.preventDefault(); window.location.hash = '#/dashboard'; onNavigate?.(); }} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-ink">
+        <a href="#/help" onClick={(e) => { e.preventDefault(); window.location.hash = '#/help'; onNavigate?.(); }} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-ink">
           <HelpCircle size={16} strokeWidth={1.8} aria-hidden /> Help
         </a>
         <AccountBlock onNavigate={onNavigate} />
