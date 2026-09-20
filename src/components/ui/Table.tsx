@@ -33,9 +33,12 @@ export function TBody({ children }: { children: ReactNode }) {
   return <tbody>{children}</tbody>;
 }
 
-export function TR({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function TR({ children, className = '', onClick }: { children: ReactNode; className?: string; onClick?: () => void }) {
   return (
-    <tr className={`border-b border-line/60 transition-colors last:border-0 hover:bg-white/[0.02] ${className}`}>
+    <tr 
+      onClick={onClick}
+      className={`border-b border-line/60 transition-colors last:border-0 hover:bg-white/[0.02] ${className}`}
+    >
       {children}
     </tr>
   );

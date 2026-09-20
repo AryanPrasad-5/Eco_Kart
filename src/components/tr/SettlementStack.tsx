@@ -26,10 +26,9 @@ export function SettlementStack({ currentStage }: SettlementStackProps) {
         transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}
         style={{ transformStyle: 'preserve-3d' }}
       >
-        {TRANSACTION_STAGES.map((stageName, i) => {
+        {TRANSACTION_STAGES.map((_, i) => {
           const isCompleted = i < currentStage;
           const isCurrent = i === currentStage;
-          const isFuture = i > currentStage;
 
           // Compute spacing for the stack
           // The plates stack on the Z axis.
