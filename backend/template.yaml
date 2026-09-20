@@ -35,12 +35,12 @@ Parameters:
 # ── Globals ─────────────────────────────────────────────────────────────────
 Globals:
   Function:
-    Runtime: nodejs20.x
+    Runtime: nodejs22.x
     Architectures: [arm64]
     Tracing: Active
     Environment:
       Variables:
-        ALLOWED_ORIGIN: 'http://localhost:5173,https://main.dpp2josj8mc9h.amplifyapp.com'
+        ALLOWED_ORIGIN: 'http://localhost:5173,https://main.d3hns30c3l57w9.amplifyapp.com'
         TABLE_NAME: !Ref FacilityTable
 
 Metadata:
@@ -121,7 +121,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins:
           - http://localhost:5173
-          - https://main.dpp2josj8mc9h.amplifyapp.com
+          - https://main.d3hns30c3l57w9.amplifyapp.com
         AllowMethods: [GET, POST, OPTIONS]
         AllowHeaders: [Content-Type, Authorization]
         MaxAge: 86400
@@ -129,8 +129,12 @@ Resources:
         Authorizers:
           CognitoJwt2:
             AuthorizerType: JWT
-            IdentitySource:
-              - '$request.header.Authorization'
+            # Scalar form (per AWS OpenAPI extension docs). A list here makes SAM
+            # emit a non-conformant ARRAY identitySource into the embedded OpenAPI
+            # body; API Gateway's importer then renders it as the literal string
+            # "[$request.header.Authorization]", breaking every JWT route after
+            # each deploy. Scalar in → scalar out → import stays correct.
+            IdentitySource: '$request.header.Authorization'
             JwtConfiguration:
               Audience:
                 - !Ref UserPoolClient
