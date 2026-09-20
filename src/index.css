@@ -279,32 +279,39 @@
   flex-direction: column;
 }
 .exp-chapter {
-  min-height: 96svh;
+  position: relative;
+  min-height: 100svh;
   display: grid;
-  align-items: center;
-  gap: clamp(28px, 5vw, 72px);
-  padding: 12vh 6vw;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  padding: 0;
+  background: var(--color-void);
+  overflow: hidden;
 }
-.exp-chapter__media--left {
-  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-}
-.exp-chapter__media--right {
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-}
-.exp-chapter__media--right .exp-chapter__media {
-  order: 2;
+.exp-chapter__media, .exp-chapter__text {
+  grid-column: 1;
+  grid-row: 1;
 }
 .exp-chapter__media {
-  margin: 0;
   position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+/* Readability overlays */
+.exp-chapter__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(5,5,5,0.95) 0%, rgba(5,5,5,0.1) 50%, rgba(5,5,5,0.95) 100%),
+              linear-gradient(to top, var(--color-void) 0%, transparent 25%, transparent 75%, var(--color-void) 100%);
+  pointer-events: none;
 }
 .exp-chapter__frame {
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
-  aspect-ratio: 4 / 5;
-  background: var(--color-surface);
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: var(--color-void);
 }
 .exp-chapter__frame img {
   width: 100%;
@@ -315,12 +322,12 @@
 }
 @keyframes exp-kenburns {
   from { transform: scale(1) translate(0, 0); }
-  to { transform: scale(1.09) translate(-1.5%, 1.5%); }
+  to { transform: scale(1.06) translate(-1%, 1%); }
 }
 .exp-chapter__credit {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: 6vw;
+  bottom: 4vh;
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 10px;
@@ -330,6 +337,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
 }
 .exp-chapter__credit a {
   color: inherit;
@@ -338,31 +346,47 @@
 .exp-chapter__credit a:hover {
   color: var(--color-ink);
 }
+.exp-chapter__text {
+  position: relative;
+  z-index: 10;
+  padding: 12vh 6vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 600px;
+}
+.exp-chapter__media--left + .exp-chapter__text {
+  margin-left: auto;
+  align-items: flex-end;
+  text-align: right;
+}
+.exp-chapter__media--right + .exp-chapter__text {
+  margin-right: auto;
+  align-items: flex-start;
+  text-align: left;
+}
 .exp-chapter__kicker {
   font-size: 11px;
   letter-spacing: 0.34em;
-  color: var(--color-ink-faint);
+  color: var(--color-accent);
+  font-weight: 600;
 }
 .exp-chapter__title {
   margin-top: 18px;
-  font-size: clamp(1.7rem, 3.2vw, 2.6rem);
+  font-size: clamp(2rem, 4vw, 3.2rem);
   line-height: 1.12;
   font-weight: 600;
   letter-spacing: -0.015em;
-  color: var(--color-ink);
+  color: #fff;
   text-wrap: balance;
+  text-shadow: 0 4px 24px rgba(0,0,0,0.8);
 }
 .exp-chapter__body {
-  margin-top: 18px;
-  max-width: 46ch;
-  font-size: clamp(0.98rem, 1.25vw, 1.08rem);
-  line-height: 1.75;
-  color: var(--color-ink-soft);
-}
-
-/* Chapters sit on near-solid ground for readability */
-.exp-chapter {
-  background: radial-gradient(120% 90% at 50% 0%, rgba(5, 5, 5, 0) 0%, rgba(5, 5, 5, 0.82) 58%, var(--color-void) 100%);
+  margin-top: 22px;
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  line-height: 1.8;
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.9);
 }
 
 /* ── Narrative ───────────────────────────────────────────────────── */
@@ -510,18 +534,14 @@
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .exp-chapter,
-  .exp-chapter__media--left,
-  .exp-chapter__media--right {
-    grid-template-columns: 1fr;
-    min-height: 0;
-    padding: 10vh 6vw;
+  .exp-chapter {
+    min-height: 90svh;
   }
-  .exp-chapter__media--right .exp-chapter__media {
-    order: 0;
-  }
-  .exp-chapter__frame {
-    aspect-ratio: 4 / 3;
+  .exp-chapter__text {
+    padding: 12vh 6vw;
+    margin: 0 !important;
+    text-align: left !important;
+    align-items: flex-start !important;
   }
   .exp-narrative__list {
     grid-template-columns: 1fr;
