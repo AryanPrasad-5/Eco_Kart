@@ -102,12 +102,12 @@ export function Hero() {
           </motion.dl>
         </div>
 
-        {/* 3D sculpture — enhancement only */}
+        {/* 3D sculpture - enhancement only */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2, ease }}
-          className="relative mx-auto hidden h-[440px] w-full max-w-[520px] sm:block lg:h-[500px]"
+          className="relative mx-auto mt-8 h-[340px] w-full max-w-[520px] sm:h-[440px] lg:mt-0 lg:h-[500px]"
         >
           <div className="absolute inset-x-8 bottom-6 h-24 rounded-full bg-accent-soft blur-2xl" aria-hidden />
           <div className="relative h-full w-full">
