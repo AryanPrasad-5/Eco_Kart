@@ -20,7 +20,9 @@ export type Route =
   | { name: 'transaction'; id: string }
   | { name: 'pickups' }
   | { name: 'analytics' }
-  | { name: 'impact' };
+  | { name: 'impact' }
+  | { name: 'settings' }
+  | { name: 'help' };
 
 /** Parse a location.hash into a Route. Unknown hashes fall back to landing. */
 export function parseHash(hash: string): Route {
@@ -56,6 +58,10 @@ export function parseHash(hash: string): Route {
       return { name: 'analytics' };
     case 'impact':
       return { name: 'impact' };
+    case 'settings':
+      return { name: 'settings' };
+    case 'help':
+      return { name: 'help' };
     default:
       return { name: 'experience' };
   }
