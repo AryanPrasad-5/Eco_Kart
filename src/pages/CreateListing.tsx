@@ -19,7 +19,7 @@ import { getApi } from '../api/client';
 import { compressImage, fileToBase64 } from '../lib/compress';
 import { categoryToMaterial, MATERIALS, QUALITY_GRADES, type Material, type QualityGrade } from '../types';
 import { MATERIAL_SPECS } from '../types';
-import { estimateValue, formatInrPlain, formatPricePerKg } from '../lib/format';
+import { estimateValue, formatInrPlain, formatPricePerKg, formatQuantity } from '../lib/format';
 import { getDeviceCoords, setDeviceCoords } from '../lib/deviceCoords';
 import { createListing } from '../api/listings';
 import { useAuth } from '../auth/AuthContext';
@@ -544,7 +544,7 @@ export function CreateListing() {
                 </div>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-3">
                   {[
-                    ['Quantity', draft.quantity ? `${draft.quantity} t` : '—'],
+                    ['Quantity', draft.quantity ? formatQuantity(Number(draft.quantity)) : '—'],
                     ['Quality', draft.quality ? `Grade ${draft.quality}` : '—'],
                     ['Asking price', draft.price ? formatPricePerKg(Number(draft.price)) : '—'],
                     ['Est. value', draft.price && draft.quantity ? formatInrPlain(estValue) : '—'],

@@ -75,6 +75,9 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  button:not(:disabled), [role="button"], a[href], summary, select, label[for] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
 }
 
 @utility tabular {

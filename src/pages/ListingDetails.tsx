@@ -14,7 +14,7 @@ import { useToast } from '../hooks/useToast';
 import { getApi } from '../api/client';
 import { LISTINGS, OFFERS, TRANSACTIONS } from '../data/listings';
 import { fetchListing, recordToListing } from '../api/listings';
-import { estimateValue, formatDate, formatInrPlain, formatPricePerKg, formatTonnes } from '../lib/format';
+import { estimateValue, formatDate, formatInrPlain, formatPricePerKg, formatQuantity } from '../lib/format';
 import { MATERIAL_TO_CATEGORY } from '../lib/materialCategory';
 import { MATERIAL_SPECS, type FacilityMatch, type Listing } from '../types';
 
@@ -210,7 +210,7 @@ export function ListingDetails({ id }: { id: string }) {
             <CardHeader title="Lot details" />
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-3">
               {[
-                { label: 'Quantity', value: formatTonnes(listing.quantityTonnes) },
+                { label: 'Quantity', value: formatQuantity(listing.quantityTonnes) },
                 { label: 'Price', value: formatPricePerKg(listing.pricePerKg) },
                 { label: 'Estimated total', value: formatInrPlain(estValue) },
                 { label: 'Quality', value: `${listing.quality} — ${listing.quality === 'A' ? 'sorted, <2% contamination' : listing.quality === 'B' ? 'lightly mixed, <8%' : 'mixed load, <15%'}` },
@@ -255,7 +255,7 @@ export function ListingDetails({ id }: { id: string }) {
                     <TR key={t.id}>
                       <TD><span className="font-mono text-xs text-accent">{t.id}</span></TD>
                       <TD>{t.counterparty}</TD>
-                      <TD className="tabular">{formatTonnes(t.quantityTonnes)}</TD>
+                      <TD className="tabular">{formatQuantity(t.quantityTonnes)}</TD>
                       <TD className="tabular">{formatInrPlain(t.valueInr)}</TD>
                       <TD className="tabular text-ink-soft">{formatDate(t.openedAt)}</TD>
                     </TR>
@@ -276,7 +276,7 @@ export function ListingDetails({ id }: { id: string }) {
             <p className="font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">Current index price</p>
             <p className="tabular mt-1 font-display text-3xl font-bold text-ink">{formatPricePerKg(listing.pricePerKg)}</p>
             <p className="mt-1 text-xs text-ink-soft">
-              Est. total <span className="tabular font-medium text-ink">{formatInrPlain(estValue)}</span> for {formatTonnes(listing.quantityTonnes)}
+              Est. total <span className="tabular font-medium text-ink">{formatInrPlain(estValue)}</span> for {formatQuantity(listing.quantityTonnes)}
             </p>
 
             <dl className="mt-4 space-y-2.5 border-t border-line pt-4 text-sm">
@@ -320,7 +320,7 @@ export function ListingDetails({ id }: { id: string }) {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink">{o.bidder}</p>
                     <p className="tabular mt-0.5 text-xs text-ink-soft">
-                      {formatTonnes(o.quantityTonnes)} · {o.placedAt}
+                      {formatQuantity(o.quantityTonnes)} · {o.placedAt}
                     </p>
                   </div>
                   <div className="text-right">
@@ -363,7 +363,7 @@ export function ListingDetails({ id }: { id: string }) {
           <Field label="Your price (₹/kg)" htmlFor="offer-price" error={errors.price} hint={`Index: ${formatPricePerKg(listing.pricePerKg)}`} required>
             <Input id="offer-price" type="number" min={1} step={0.5} value={price} invalid={!!errors.price} onChange={(e) => setPrice(e.target.value)} />
           </Field>
-          <Field label="Quantity (tonnes)" htmlFor="offer-qty" error={errors.qty} hint={`Available: ${formatTonnes(listing.quantityTonnes)}`} required>
+          <Field label="Quantity (tonnes)" htmlFor="offer-qty" error={errors.qty} hint={`Available: ${formatQuantity(listing.quantityTonnes)}`} required>
             <Input id="offer-qty" type="number" min={0.1} step={0.1} value={qty} invalid={!!errors.qty} onChange={(e) => setQty(e.target.value)} />
           </Field>
           <div className="rounded-md border border-line bg-surface-2/60 p-3 text-sm">

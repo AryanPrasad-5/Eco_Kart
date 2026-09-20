@@ -35,6 +35,11 @@ export function formatTonnes(tonnes: number): string {
   return `${tonnes.toLocaleString('en-IN', { maximumFractionDigits: 1 })} t`;
 }
 
+/** 2,400 kg — standardises display of quantity in kg. */
+export function formatQuantity(tonnes: number): string {
+  return `${(tonnes * 1000).toLocaleString('en-IN', { maximumFractionDigits: 0 })} kg`;
+}
+
 /** ₹38/kg price label. */
 export function formatPricePerKg(price: number): string {
   return `₹${price}/kg`;

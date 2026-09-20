@@ -1,6 +1,6 @@
 import { MapPin, CalendarClock, Eye, ShieldCheck } from 'lucide-react';
 import type { Listing } from '../types';
-import { formatDateShort, formatPricePerKg, formatTonnes, estimateValue, formatInr } from '../lib/format';
+import { formatDateShort, formatPricePerKg, formatQuantity, estimateValue, formatInr } from '../lib/format';
 import { GradeBadge, StatusBadge } from './ui/Badge';
 import { Button } from './ui/Button';
 
@@ -22,7 +22,7 @@ export function MarketplaceCard({ listing }: { listing: Listing }) {
       <div className="mt-4 grid grid-cols-3 items-end gap-3 border-y border-line py-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">Quantity</p>
-          <p className="tabular mt-1 font-display text-lg font-semibold text-ink">{formatTonnes(listing.quantityTonnes)}</p>
+          <p className="tabular mt-1 font-display text-lg font-semibold text-ink">{formatQuantity(listing.quantityTonnes)}</p>
         </div>
         <div>
           <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">Price</p>

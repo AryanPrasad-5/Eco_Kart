@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search, SlidersHorizontal, MapPin, ArrowUpRight } from 'lucide-react';
 import { LISTINGS } from '../../data/listings';
 import { MATERIALS, type Material } from '../../types';
-import { formatDateShort, formatPricePerKg, formatTonnes } from '../../lib/format';
+import { formatDateShort, formatPricePerKg, formatQuantity } from '../../lib/format';
 import { StatusBadge } from '../ui/Badge';
 
 type SortKey = 'price-desc' | 'price-asc' | 'qty-desc' | 'newest';
@@ -121,7 +121,7 @@ export function MarketPreview() {
                       <span className="text-ink-soft">{l.subtype}</span>
                       <span className="ml-2 font-mono text-[10.5px] uppercase text-ink-faint">{l.material}</span>
                     </td>
-                    <td className="tabular px-4 py-3 text-ink">{formatTonnes(l.quantityTonnes)}</td>
+                    <td className="tabular px-4 py-3 text-ink">{formatQuantity(l.quantityTonnes)}</td>
                     <td className="tabular px-4 py-3 font-medium text-accent">{formatPricePerKg(l.pricePerKg)}</td>
                     <td className="px-4 py-3 text-ink-soft">
                       <span className="inline-flex items-center gap-1.5">

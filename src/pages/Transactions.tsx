@@ -7,7 +7,7 @@ import { Table, TBody, TD, TH, THead, TR } from '../components/ui/Table';
 import { Timeline } from '../components/ui/Timeline';
 import { EmptyState } from '../components/ui/Skeleton';
 import { TRANSACTIONS } from '../data/listings';
-import { formatDate, formatInrPlain, formatTonnes } from '../lib/format';
+import { formatDate, formatInrPlain, formatQuantity } from '../lib/format';
 import { TRANSACTION_STAGES } from '../types';
 
 export function Transactions() {
@@ -20,17 +20,17 @@ export function Transactions() {
             <EmptyState icon={<SearchX size={18} />} title="No transactions yet" body="Your first accepted offer creates one." />
           </div>
         ) : (
-          <Table caption="Transactions">
+          <Table caption="Transactions" className="table-fixed w-full min-w-0">
             <THead>
               <TR>
-                <TH>Tx ID</TH>
-                <TH>Counterparty</TH>
-                <TH>Material</TH>
-                <TH>Quantity</TH>
-                <TH>Value</TH>
-                <TH>Stage</TH>
-                <TH>Opened</TH>
-                <TH />
+                <TH className="w-[12%]">Tx ID</TH>
+                <TH className="w-[20%]">Counterparty</TH>
+                <TH className="w-[12%]">Material</TH>
+                <TH className="w-[12%]">Quantity</TH>
+                <TH className="w-[12%]">Value</TH>
+                <TH className="w-[12%]">Stage</TH>
+                <TH className="w-[12%]">Opened</TH>
+                <TH className="w-[8%]" />
               </TR>
             </THead>
             <TBody>
@@ -39,7 +39,7 @@ export function Transactions() {
                   <TD><span className="font-mono text-xs text-accent">{t.id}</span></TD>
                   <TD className="max-w-[160px] truncate">{t.counterparty}</TD>
                   <TD className="capitalize text-ink-soft">{t.material}</TD>
-                  <TD className="tabular">{formatTonnes(t.quantityTonnes)}</TD>
+                  <TD className="tabular">{formatQuantity(t.quantityTonnes)}</TD>
                   <TD className="tabular font-medium">{formatInrPlain(t.valueInr)}</TD>
                   <TD>
                     <StatusBadge status={t.stage >= 5 ? 'accepted' : t.stage >= 3 ? 'reserved' : 'pending'} />
@@ -106,7 +106,7 @@ export function TransactionDetail({ id }: { id: string }) {
               {[
                 ['Counterparty', tx.counterparty],
                 ['Material', tx.material],
-                ['Quantity', formatTonnes(tx.quantityTonnes)],
+                ['Quantity', formatQuantity(tx.quantityTonnes)],
                 ['Value', formatInrPlain(tx.valueInr)],
                 ['Opened', formatDate(tx.openedAt)],
                 ['Direction', tx.direction],

@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import { StatusBadge, GradeBadge } from '../components/ui/Badge';
 import { useAuth } from '../auth/AuthContext';
 import { fetchMyListings, recordToListing, type ListingRecord } from '../api/listings';
-import { formatDate, formatPricePerKg, formatTonnes } from '../lib/format';
+import { formatDate, formatPricePerKg, formatQuantity } from '../lib/format';
 
 /**
  * My Listings (Phase 5) - only the authenticated owner's records, fetched
@@ -84,7 +84,7 @@ export function MyListings() {
                     <GradeBadge grade={l.quality} />
                     <StatusBadge status={l.status} />
                   </div>
-                  <p className='tabular text-xs text-ink-soft'>{formatTonnes(r.quantityTonnes)} · {formatPricePerKg(r.pricePerKg)}</p>
+                  <p className='tabular text-xs text-ink-soft'>{formatQuantity(r.quantityTonnes)} · {formatPricePerKg(r.pricePerKg)}</p>
                   <Button variant='ghost' size='sm' onClick={() => (window.location.hash = '#/listing/' + encodeURIComponent(r.listingId))}>View</Button>
                 </li>
               );

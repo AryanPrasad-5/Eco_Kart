@@ -52,7 +52,7 @@ export function Marketplace() {
         (filters.city === 'any' || l.city === filters.city) &&
         (filters.quality === 'all' || l.quality === filters.quality) &&
         l.pricePerKg <= maxPrice &&
-        l.quantityTonnes >= minQty &&
+        (l.quantityTonnes * 1000) >= minQty &&
         (filters.pickupBefore === '' || l.pickupFrom <= filters.pickupBefore) &&
         (query === '' || `${l.seller} ${l.material} ${l.subtype} ${l.locality} ${l.id}`.toLowerCase().includes(query.toLowerCase())),
     );
@@ -134,13 +134,13 @@ export function Marketplace() {
 
       <div>
         <label htmlFor="f-qty" className="mb-1.5 block font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">
-          Min quantity (t)
+          Min quantity (kg)
         </label>
         <Input
           id="f-qty"
           type="number"
           min={0}
-          step={0.1}
+          step={1}
           placeholder="Any"
           value={filters.minQty}
           onChange={(e) => set('minQty', e.target.value)}

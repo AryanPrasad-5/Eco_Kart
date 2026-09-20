@@ -12,7 +12,7 @@ Copy `.env.local` (gitignored) with:
 
 ```
 VITE_API_BASE_URL=https://zwy8mv3ihh.execute-api.ap-south-1.amazonaws.com
-VITE_MAP_STYLE=https://maps.geo.ap-south-1.amazonaws.com/maps/v0/maps/ecokart-map
+VITE_MAP_STYLE=https://maps.geo.ap-south-1.amazonaws.com/v2/styles/Standard
 VITE_MAP_API_KEY=<Amazon Location API key>
 ```
 

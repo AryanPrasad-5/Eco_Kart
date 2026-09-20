@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
 import { LISTINGS } from '../../data/listings';
-import { formatDateShort, formatPricePerKg, formatTonnes } from '../../lib/format';
+import { formatDateShort, formatPricePerKg, formatQuantity } from '../../lib/format';
 import { GradeBadge } from '../ui/Badge';
 
 /** 8 of the 12 listings, ranked by freshness — the "market depth" panel. */
@@ -73,7 +73,7 @@ export function LiveMarket() {
                 <GradeBadge grade={l.quality} />
               </div>
               <p className="tabular mt-3 font-display text-[26px] font-semibold leading-none text-ink">
-                {formatTonnes(l.quantityTonnes)}
+                {formatQuantity(l.quantityTonnes)}
               </p>
               <p className="tabular mt-1.5 text-sm font-medium text-accent">{formatPricePerKg(l.pricePerKg)}</p>
               <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5 text-[11.5px] text-ink-faint">
