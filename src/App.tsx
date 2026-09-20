@@ -35,6 +35,9 @@ function AppRoutes() {
     case 'product':
       page = <ProductLanding />;
       break;
+    case 'experience':
+      page = experience;
+      break;
     case 'marketplace':
       page = <Marketplace />;
       break;
@@ -72,7 +75,7 @@ function AppRoutes() {
       page = <SignUp />;
       break;
     default:
-      page = experience;
+      page = <ProductLanding />;
   }
 
   return (
