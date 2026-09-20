@@ -13,6 +13,8 @@ import { Analytics } from './pages/Analytics';
 import { ImpactPage } from './pages/Impact';
 import { SignIn, SignUp } from './pages/Auth';
 import { MyListings } from './pages/MyListings';
+import { Settings } from './pages/Settings';
+import { Help } from './pages/Help';
 import { AuthProvider } from './auth/AuthContext';
 
 /** The Earth-first experience is its own chunk — the product loads without it. */
@@ -77,6 +79,12 @@ function AppRoutes() {
       break;
     case 'signup':
       page = <SignUp />;
+      break;
+    case 'settings':
+      page = <Settings />;
+      break;
+    case 'help':
+      page = <Help />;
       break;
     default:
       page = <ProductLanding />;
