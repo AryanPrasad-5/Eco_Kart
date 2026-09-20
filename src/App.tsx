@@ -8,6 +8,7 @@ import { CreateListing } from './pages/CreateListing';
 import { Dashboard } from './pages/Dashboard';
 import { RecyclerDashboard } from './pages/RecyclerDashboard';
 import { Transactions, TransactionDetail } from './pages/Transactions';
+import { Pickups } from './pages/Pickups';
 import { Analytics } from './pages/Analytics';
 import { ImpactPage } from './pages/Impact';
 import { SignIn, SignUp } from './pages/Auth';
@@ -58,6 +59,9 @@ function AppRoutes() {
       break;
     case 'transaction':
       page = <TransactionDetail id={route.id} />;
+      break;
+    case 'pickups':
+      page = <Pickups />;
       break;
     case 'analytics':
       page = <Analytics />;

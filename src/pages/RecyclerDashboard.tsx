@@ -9,7 +9,7 @@ import { MarketplaceCard } from '../components/MarketplaceCard';
 import { Table, TBody, TD, TH, THead, TR } from '../components/ui/Table';
 import { EmptyState } from '../components/ui/Skeleton';
 import { DEMAND_INDEX, LISTINGS, OFFERS, PICKUPS } from '../data/listings';
-import { formatDateShort, formatInr, formatPricePerKg, formatTonnes } from '../lib/format';
+import { formatDateShort, formatInr, formatPricePerKg, formatQuantity } from '../lib/format';
 
 const DEMAND_COLORS = ['#34e27a', '#34e27a', '#57b06a', '#57b06a', '#575e5a', '#575e5a'] as const;
 const demandColor = (i: number) => DEMAND_COLORS[i] ?? '#575e5a';
@@ -77,7 +77,7 @@ export function RecyclerDashboard() {
                         </button>
                       </TD>
                       <TD className="tabular font-medium text-accent">{formatPricePerKg(o.pricePerKg)}</TD>
-                      <TD className="tabular">{formatTonnes(o.quantityTonnes)}</TD>
+                      <TD className="tabular">{formatQuantity(o.quantityTonnes)}</TD>
                       <TD><StatusBadge status={o.status} /></TD>
                     </TR>
                   );
@@ -131,7 +131,7 @@ export function RecyclerDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge tone="mono">{formatTonnes(p.quantityTonnes)}</Badge>
+                  <Badge tone="mono">{formatQuantity(p.quantityTonnes)}</Badge>
                   <StatusBadge status={p.status === 'in-progress' ? 'reserved' : 'available'} />
                 </div>
               </li>

@@ -15,6 +15,12 @@ interface MapViewProps {
   selectedFacilityId?: string | null | undefined;
   /** Fired when the user selects a marker (for list highlight sync). */
   onSelectFacility?: ((facilityId: string | null) => void) | undefined;
+  /** Whether the center marker is draggable. */
+  draggableMarker?: boolean | undefined;
+  /** Fired when the center marker is dragged or map is clicked (if draggable). */
+  onLocationChange?: ((loc: Location) => void) | undefined;
+  /** Whether the map should fill its container height (with min-heights). */
+  fullHeight?: boolean | undefined;
 }
 
 /* ── Amazon Location wiring (env-only, never hard-coded) ─────────────── */
@@ -110,7 +116,8 @@ function popupHtml(m: FacilityMatch): string {
 
 /* ── Live map: Amazon Location + MapLibre ─────────────────────────────── */
 
-function LiveMap({ center, userLocation, matches = [], caption, selectedFacilityId, onSelectFacility }: MapViewProps) {
+function LiveMap(props: MapViewProps) {
+  const { center, userLocation, matches = [], caption, selectedFacilityId } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -130,10 +137,17 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
   const select = useCallback(
     (id: string | null) => {
       setSelected(id);
-      onSelectFacility?.(id);
+      props.onSelectFacility?.(id);
     },
-    [onSelectFacility],
+    [props.onSelectFacility],
   );
+
+  const latestOnChange = useRef(props.onLocationChange);
+  const latestDraggable = useRef(props.draggableMarker);
+  useEffect(() => {
+    latestOnChange.current = props.onLocationChange;
+    latestDraggable.current = props.draggableMarker;
+  }, [props.onLocationChange, props.draggableMarker]);
 
   // Init the map ONCE per configuration — never on re-render (task §19).
   // maplibre-gl is dynamically imported so the main bundle never carries it.
@@ -173,6 +187,12 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
           if (disposed) return;
           setLoading(false);
           setMapReady(true);
+        });
+
+        map.on('click', (e: maplibregl.MapMouseEvent) => {
+          if (!latestDraggable.current) return;
+          if ((e.originalEvent.target as HTMLElement).closest('.mx-marker-fac')) return;
+          latestOnChange.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng });
         });
 
         // Safety net: style that never loads within 12s (silent network failure).
@@ -220,8 +240,17 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
         if (!pickupMarkerRef.current) {
           const el = document.createElement('div');
           el.className = 'mx-marker-pickup';
+          if (latestDraggable.current) el.style.cursor = 'grab';
           el.innerHTML = PICKUP_PIN_SVG;
-          pickupMarkerRef.current = new lib.Marker({ element: el }).setLngLat([center.lng, center.lat]).addTo(map);
+          const marker = new lib.Marker({ element: el, draggable: Boolean(latestDraggable.current) })
+            .setLngLat([center.lng, center.lat])
+            .addTo(map);
+            
+          marker.on('dragend', () => {
+            const ll = marker.getLngLat();
+            latestOnChange.current?.({ lat: ll.lat, lng: ll.lng });
+          });
+          pickupMarkerRef.current = marker;
         } else {
           pickupMarkerRef.current.setLngLat([center.lng, center.lat]);
         }
@@ -277,6 +306,40 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
         bounds.extend([m.facility.lng, m.facility.lat]);
       });
 
+      // Route line
+      const selMatch = validMatches.find((m) => m.facility.facility_id === selected);
+      if (selMatch && isValidCoords(center)) {
+        const lineData = {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [center.lng, center.lat],
+              [selMatch.facility.lng, selMatch.facility.lat],
+            ],
+          },
+          properties: {},
+        };
+        if (!map.getSource('route-line')) {
+          map.addSource('route-line', { type: 'geojson', data: lineData });
+          map.addLayer({
+            id: 'route-line-layer',
+            type: 'line',
+            source: 'route-line',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': '#34e27a', 'line-width': 3, 'line-dasharray': [1.5, 2] },
+          });
+        } else {
+          (map.getSource('route-line') as maplibregl.GeoJSONSource).setData(lineData);
+        }
+      } else if (map.getSource('route-line')) {
+        (map.getSource('route-line') as maplibregl.GeoJSONSource).setData({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [] },
+          properties: {},
+        });
+      }
+
       // Fit bounds (task §9): user + facilities, padded, never uselessly far out.
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 56, maxZoom: 14, duration: 350 });
@@ -316,8 +379,8 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
   if (failed) return <SchematicMap center={center} userLocation={userLocation} matches={matches} caption={caption} />;
 
   return (
-    <figure className="overflow-hidden rounded-lg border border-line bg-[#0a0c0b]">
-      <div className="relative h-56 sm:h-64">
+    <figure className={`overflow-hidden rounded-lg border border-line bg-[#0a0c0b] flex flex-col ${props.fullHeight ? 'flex-1 min-h-[300px] lg:min-h-[380px]' : ''}`}>
+      <div className={`relative ${props.fullHeight ? 'flex-1 min-h-[300px] lg:min-h-[380px]' : 'h-56 sm:h-64'}`}>
         <div ref={containerRef} className="absolute inset-0" aria-label="Interactive map of nearby facilities" />
         {loading && (
           <div className="absolute inset-0 z-10 grid place-items-center bg-[#0a0c0b]" role="status" aria-live="polite">
@@ -335,7 +398,8 @@ function LiveMap({ center, userLocation, matches = [], caption, selectedFacility
 
 /* ── Schematic fallback: zero-cost, dev-safe, list still carries the data ── */
 
-function SchematicMap({ center, userLocation, matches, caption, selectedFacilityId }: MapViewProps) {
+function SchematicMap(props: MapViewProps) {
+  const { center, userLocation, matches, caption, selectedFacilityId, draggableMarker, onLocationChange } = props;
   const facilityMatches = matches ?? [];
   const bounds = useMemo(() => {
     const lats = [center.lat, ...facilityMatches.map((m) => m.facility.lat)];
@@ -344,11 +408,15 @@ function SchematicMap({ center, userLocation, matches, caption, selectedFacility
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
+    const rawSpanLat = Math.max(maxLat - minLat, 0.012);
+    const rawSpanLng = Math.max(maxLng - minLng, 0.012);
+    const padLat = rawSpanLat * 0.15;
+    const padLng = rawSpanLng * 0.15;
     return {
-      minLat,
-      spanLat: Math.max(maxLat - minLat, 0.012),
-      minLng,
-      spanLng: Math.max(maxLng - minLng, 0.012),
+      minLat: minLat - padLat,
+      spanLat: rawSpanLat + padLat * 2,
+      minLng: minLng - padLng,
+      spanLng: rawSpanLng + padLng * 2,
     };
   }, [center, matches]);
 
@@ -362,8 +430,37 @@ function SchematicMap({ center, userLocation, matches, caption, selectedFacility
   const pickup = toXY(center.lat, center.lng);
 
   return (
-    <figure className="overflow-hidden rounded-lg border border-line bg-[#0a0c0b]">
-      <div className="relative h-56 bg-grid" role="img" aria-label="Schematic map of the pickup zone">
+    <figure className={`overflow-hidden rounded-lg border border-line bg-[#0a0c0b] flex flex-col ${props.fullHeight ? 'flex-1 min-h-[300px] lg:min-h-[380px]' : ''}`}>
+      <div 
+        className={`relative bg-grid ${props.fullHeight ? 'flex-1 min-h-[300px] lg:min-h-[380px]' : 'h-56'} ${props.draggableMarker ? 'cursor-pointer touch-none' : ''}`}
+        role="img" 
+        aria-label="Schematic map of the pickup zone"
+        onPointerDown={(e) => {
+          if (!draggableMarker || !onLocationChange) return;
+          const container = e.currentTarget;
+          if ((e.target as HTMLElement).closest('.mx-marker-fac-schematic')) return; // ignore clicks on facility markers
+          container.setPointerCapture(e.pointerId);
+          
+          const update = (evt: React.PointerEvent | PointerEvent) => {
+            const rect = container.getBoundingClientRect();
+            const xPct = ((evt.clientX - rect.left) / rect.width) * 100;
+            const yPct = ((evt.clientY - rect.top) / rect.height) * 100;
+            const lng = (xPct / 100) * bounds.spanLng + bounds.minLng;
+            const lat = bounds.minLat + (1 - (yPct / 100)) * bounds.spanLat;
+            onLocationChange({ lat, lng });
+          };
+          update(e); // initial click
+          
+          const move = (mv: PointerEvent) => update(mv);
+          const up = () => {
+            container.removeEventListener('pointermove', move);
+            container.removeEventListener('pointerup', up);
+            container.releasePointerCapture(e.pointerId);
+          };
+          container.addEventListener('pointermove', move);
+          container.addEventListener('pointerup', up);
+        }}
+      >
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="block h-full w-full" aria-hidden>
           {[...Array(5)].map((_, i) => (
             <line key={`h${i}`} x1="0" x2="100" y1={i * 25} y2={i * 25} stroke="#ffffff10" strokeWidth="0.25" />
@@ -371,6 +468,16 @@ function SchematicMap({ center, userLocation, matches, caption, selectedFacility
           {[...Array(5)].map((_, i) => (
             <line key={`v${i}`} y1="0" y2="100" x1={i * 25} x2={i * 25} stroke="#ffffff10" strokeWidth="0.25" />
           ))}
+          
+          {(() => {
+            const selMatch = facilityMatches.find((m) => m.facility.facility_id === selectedFacilityId);
+            if (selMatch && isValidCoords(center) && isValidCoords({ lat: selMatch.facility.lat, lng: selMatch.facility.lng })) {
+              const p1 = toXY(center.lat, center.lng);
+              const p2 = toXY(selMatch.facility.lat, selMatch.facility.lng);
+              return <line x1={`${p1.x}%`} y1={`${p1.y}%`} x2={`${p2.x}%`} y2={`${p2.y}%`} stroke="#34e27a" strokeWidth="0.8" strokeDasharray="1.5 1.5" />;
+            }
+            return null;
+          })()}
           <circle cx={user.x} cy={user.y} r="26" fill="#34e27a08" stroke="#34e27a33" strokeWidth="0.4" strokeDasharray="2 1.6" />
           {[...Array(12)].map((_, i) => {
             const a = (i / 12) * Math.PI * 2;
@@ -404,7 +511,7 @@ function SchematicMap({ center, userLocation, matches, caption, selectedFacility
           return (
             <span
               key={m.facility.facility_id}
-              className={`tabular absolute z-10 grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border font-mono text-[9px] font-medium ${
+              className={`mx-marker-fac-schematic tabular absolute z-10 grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border font-mono text-[9px] font-medium ${
                 m.facility.facility_id === selectedFacilityId
                   ? 'border-accent bg-[#0d1f16] text-accent'
                   : 'border-line-strong bg-surface-2 text-ink-soft'

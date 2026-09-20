@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Table, TBody, TD, TH, THead, TR } from '../components/ui/Table';
 import { EmptyState } from '../components/ui/Skeleton';
 import { VOLUME_SERIES, MATERIAL_MIX, TRANSACTIONS, PICKUPS } from '../data/listings';
-import { formatDateShort, formatInr, formatInrPlain, formatTonnes } from '../lib/format';
+import { formatDateShort, formatInr, formatInrPlain, formatTonnes, formatQuantity } from '../lib/format';
 
 const MIX_COLORS = ['#34e27a', '#7fd0e0', '#c9b48a', '#aeb9bd', '#5f7fd0', '#575e5a'] as const;
 const mixColor = (i: number) => MIX_COLORS[i] ?? '#575e5a';
@@ -136,7 +136,7 @@ export function Dashboard() {
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="tabular text-sm font-semibold text-ink">{formatTonnes(p.quantityTonnes)}</p>
+                    <p className="tabular text-sm font-semibold text-ink">{formatQuantity(p.quantityTonnes)}</p>
                     <p className="text-[11px] capitalize text-ink-faint">{p.material}</p>
                   </div>
                 </li>
