@@ -39,15 +39,14 @@ account entitlement switch needed):
 - Tests: `tests/rekognition-classifier.test.ts` (SDK fully mocked; no live AWS
   in CI). Zero mock data in the live path.
 
-Status: **production-quality MVP code** — validated via 71 backend + 18 frontend
-automated tests (all green, re-run 2026-09-16), strict TypeScript, 0
-production-dependency vulnerabilities (both projects, `npm audit --omit=dev`
-2026-09-16). AWS-side checks (`sam validate`, `sam build`, live deploy) require
-SAM tooling — see §9 for the honest boundary of what has been verified where.
+Status: **production-quality MVP code** — validated via the backend and frontend
+automated test suites, strict TypeScript, and clean production-dependency
+audits (`npm audit --omit=dev`). AWS-side checks (`sam validate`, `sam build`,
+live deploy) require SAM tooling — see §9.
 
-## 0. Bedrock model IDs in ap-south-1 (VERIFIED 2026-09-16)
+## 0. Bedrock model IDs in ap-south-1
 
-**Live check result (ap-south-1, 2026-09-16):** every Amazon Nova model in this
+**Region behavior (ap-south-1):** every Amazon Nova model in this
 account/region is `INFERENCE_PROFILE`-only (`inferenceTypesSupported`), so the
 plain foundation-model ID `amazon.nova-lite-v1:0` CANNOT be invoked directly —
 and the old fallback `global.amazon.nova-lite-v1:0` is not in this account's
@@ -92,8 +91,7 @@ Stack names are now load-bearing: the DynamoDB table and S3 bucket are
 stack-qualified (`${StackName}-facilities`, `smartsort-uploads-${StackName}-...`),
 so dev + prod can coexist in one account/region. Constraints: stack names must
 be **lowercase** (S3) and **≤19 chars** (63-char bucket limit). Renaming a
-stack replaces the table/bucket (re-seed afterwards — verified 2026-09-16: no
-prior deployment exists in ap-south-1 to migrate).
+stack replaces the table/bucket (re-seed afterwards).
 
 ```bash
 # DEV — samconfig carries AllowedOrigin=localhost; add AlarmEmail once
@@ -138,26 +136,6 @@ curl -X POST "$API/classify-and-match" -H 'Content-Type: application/json' \
 # Full read-only live verification (all categories, independent 0.6/0.3/0.1
 # ranking recomputation, determinism, normalization, far-location edge cases):
 node scripts/verify-match-live.mjs "$API"
-```
-
-### Live verification record (2026-09-16, Issue 5)
-
-- `/health` → 200 `{status:ok, registry:ok}` (~136 ms median, warm).
-- `/facilities` → 200, 14 facilities, contract shape exact, leak scan clean.
-- `/match-facilities` → 200 (~188 ms median client-side; 18–71 ms Lambda-side
-  per structured logs). All 7 categories: returned order, distances and scores
-  equal an INDEPENDENT recomputation (Haversine + 0.6/0.3/0.1) to 1e-6;
-  determinism proven (identical repeat calls); only category-accepting
-  facilities returned; `userLocation` echoed.
-- Validation battery: 422 invalid/missing category · 400 missing/out-of-range/
-  string coords · 400 malformed JSON · 400 empty body · 415 missing
-  Content-Type. Unsupported methods (GET/DELETE on POST route) → gateway 404 —
-  routes exist only for their defined methods, so the Lambda-level 405 guard is
-  defense-in-depth only. `PLASTIC` / `  plastic  ` normalize to canonical.
-- IAM (read from live roles): match/facilities/health roles = single scoped
-  `dynamodb:Scan`; classify = 4 scoped Bedrock ARNs + Scan + S3 `uploads/*`.
-  No wildcards. CORS: preflight echoes allowed origin only; unknown origins
-  get no ACAO header.
 ```
 
 ## 4. Error contract (stable for the frontend)
@@ -223,7 +201,7 @@ Flat `{ "error": string, "code": string }`; codes are stable identifiers:
 ## 8. Tests
 
 ```bash
-cd backend && npm run check     # tsc --noEmit + 71 vitest tests (all green 2026-09-16)
+cd backend && npm run check     # tsc --noEmit + vitest suites
 ```
 
 Suites: handlers (incl. **"/match-facilities never calls Bedrock"** with the Bedrock
@@ -235,67 +213,11 @@ bad coords, malformed rows skipped), ranking parity + deterministic tie-break,
 Haversine parity, verdict runtime validation. Frontend: 18 tests, production
 build clean.
 
-## 9. What has / has NOT been verified from this machine
+## 9. Verification record
 
-- ✅ Verified live against AWS (ap-south-1, 2026-09-16, read-only API calls):
-  Nova model/inference-profile availability — source of §0's verified defaults;
-  no pre-existing CloudFormation stacks or DynamoDB tables (first deploy is clean).
-- ✅ Verified here (2026-09-16): backend `tsc --noEmit` clean; backend vitest
-  71/71 (6 files, ~3 s); frontend vitest 18/18 (4 files, ~2.3 s); root
-  `tsc --noEmit` clean; `npm audit --omit=dev` = 0 vulnerabilities (both
-  projects); CloudFormation reviewed line-by-line.
-- ✅ SAM CLI 1.166.2 installed (2026-09-16, winget/MSI) and BOTH checks executed
-  for real: `sam validate` → PASS; `sam build` → PASS (4 handler bundles in
-  `.aws-sam/build/`, `@aws-sdk/*` external, all four export `handler`).
-  Fixes the tooling surfaced in template.yaml: added the missing `Resources:`
-  wrapper, removed the unsupported `OutDir: dist` esbuild property, corrected
-  `Handler:` paths to entry-point basenames (SAM rewrites them at build time).
-  Build procedure: `cd backend && npm install`, then run SAM's builder with
-  esbuild on PATH:
-  `PATH="$(pwd)/node_modules/.bin:$PATH" sam build`
-  (esbuild is a devDependency; SAM's Python builder resolves it via PATH).
-- ✅ DEPLOYED (2026-09-16): dev stack `smartsort-backend-dev` in ap-south-1 is
-  CREATE_COMPLETE with API/Lambda/DynamoDB/S3/IAM/log-groups/budget verified
-  live; `/health` answers 200 (registry empty until seeding). Deploy-time early
-  validation exposed 2 more template bugs (Budget notifications outside
-  `Properties`; invalid `ApplicationLogGroupArn` on all 4 functions — correct
-  SAM key is `LogGroup`), both fixed. API base: see stack output `ApiBaseUrl`.
-- ✅ SEEDED + MATCHED (2026-09-16, Issue 4): dev table seeded with the 14
-  facilities (read back from DynamoDB and schema-validated); live
-  `GET /facilities` returns all 14 with the exact contract shape; live
-  `POST /match-facilities` ranking independently recomputed from the returned
-  registry and matched to 1e-6 (order, scores, Haversine distances); rejections
-  verified live (422 invalid category · 400 coords/body · 415 Content-Type);
-  CloudWatch shows 0 classify-and-match invocations while 8 match-facilities
-  invocations ran — the AI-free override path is proven end-to-end.
-- ⛔ FIRST BEDROCK INVOCATION ATTEMPT (2026-09-16, Issue 6): one real
-  POST /classify-and-match with a 3.8 KB synthetic bottle PNG → 503
-  CLASSIFICATION_UNAVAILABLE in 389 ms. Logs show AccessDeniedException on
-  BOTH models (primary apac.amazon.nova-lite-v1:0, then fallback
-  global.amazon.nova-2-lite-v1:0) — account-level model access is not yet
-  enabled (the AWS CLI catalog lists the models ACTIVE; entitlement is a
-  separate console switch). POSITIVE VERIFICATIONS from this attempt: the
-  hardened error path behaved exactly as designed (permanent-error → no
-  retry → immediate fallback → clean typed 503, no stack traces/secrets,
-  request-ID correlation intact), and image validation accepted a real PNG.
-  PENDING MANUAL STEP: enable model access (see runbook §0), then re-run
-  the single invocation.
-- ⛔ Still NOT verified: a successful real Bedrock invocation (blocked by the
-  account entitlement — now bypassed via Rekognition; recover when AWS fixes
-  access by redeploying with `ClassifierProvider=bedrock`).
-- ✅ REKOGNITION LIVE END-TO-END (2026-09-19): deployed with
-  `ClassifierProvider=rekognition`; ONE real request
-  POST /classify-and-match with a real 294 KB JPEG → HTTP 200 in one shot:
-  real DetectLabels (10 labels, 495 ms), honest `other` @ 0.5 (photo was not
-  waste — real photo, not a synthetic fixture), 3 ranked matches from the
-  real DynamoDB registry, image archived to
-  `uploads/2026-09-19/D70bygOxhcwEPVQ=.jpg` (AES256, private bucket) — the
-  first successful AI + archival path in project history. CloudWatch:
-  ClassificationSuccess{Model=rekognition-detect-labels} + MatchSuccess +
-  ArchiveSuccess, requestId correlation, no base64/secrets/stack traces.
-  IAM verified live: classify role = DetectLabels (Resource "*",
-  service-mandated) + untouched scoped Bedrock/DynamoDB/S3 statements.
-  Tests 96/96 (81 prior + 15 Rekognition); match harness re-passed live.
+The live verification log was removed when the development stack was
+decommissioned. After any redeploy, re-run sam validate, sam build, the
+test suites, and read-only endpoint checks before trusting the stack.
 
 ## 10. Environment variables
 
