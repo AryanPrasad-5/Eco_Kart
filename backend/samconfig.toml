@@ -1,0 +1,22 @@
+# SAM deploy configuration — SmartSort backend
+version = 0.1
+
+[default]
+[default.build.parameters]
+cached = false
+parallel = false
+
+[default.deploy.parameters]
+stack_name = "smartsort-backend"
+region = "ap-south-1"
+resolve_s3 = true
+s3_prefix = "smartsort-backend"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+# DEV/PROD origins are set statically in template.yaml (localhost Vite dev
+# server + the Amplify production domain). No AllowedOrigin override is needed;
+# if the Amplify domain ever changes, update AllowOrigins in template.yaml.
+# AlarmEmail is deliberately NOT set here: it is a REQUIRED parameter, so the
+# first `sam deploy` aborts until you add a real address here or pass
+#   --parameter-overrides AlarmEmail=you@example.com
+parameter_overrides = ["AlarmEmail=mailforaryan05@gmail.com"]

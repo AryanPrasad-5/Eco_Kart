@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SmartSort — Architecture Evolution &amp; Final Technical Plan</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   SmartSort technical report — print-first stylesheet (A4)
+   ═══════════════════════════════════════════════════════════════ */
+@page { size: A4; margin: 14mm 13mm 16mm 13mm; }
+
+:root {
+  --g950:#0e2a1d; --g900:#14382a; --g800:#1a4f39; --g700:#1f6b4a;
+  --g600:#23865a; --g500:#2ea06d; --g100:#e3f3ea; --g50:#f0f9f4;
+  --ink:#1d2a23; --soft:#4c5c53; --faint:#78877e; --line:#dde3de;
+  --amber:#9c6b1d; --amberbg:#faf3e3; --red:#a83d2d; --redbg:#faebe7;
+  --blue:#1d5a8a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body { font-family:"Segoe UI", system-ui, sans-serif; color:var(--ink); font-size:9.6pt; line-height:1.5; }
+
+.page { page-break-after: always; padding:0; position:relative; min-height:256mm; }
+.page:last-child { page-break-after:auto; }
+
+h1,h2,h3,h4 { font-family:"Segoe UI Semibold","Segoe UI",sans-serif; color:var(--g950); line-height:1.25; }
+h2.sec { font-size:17pt; margin:0 0 3mm 0; padding-bottom:2mm; border-bottom:2.5px solid var(--g600); letter-spacing:-0.01em; }
+h2.sec .no { color:var(--g600); font-size:10pt; font-weight:700; letter-spacing:0.14em; display:block; margin-bottom:1mm; }
+h3 { font-size:11pt; margin:4.5mm 0 2mm; color:var(--g800); }
+h4 { font-size:9.8pt; margin:3.5mm 0 1.5mm; }
+p { margin:0 0 2.4mm; }
+ul,ol { margin:0 0 2.6mm 5mm; }
+li { margin-bottom:1.1mm; }
+strong { color:var(--g900); }
+.small { font-size:8.4pt; color:var(--soft); }
+.tiny { font-size:7.6pt; color:var(--faint); }
+
+table { width:100%; border-collapse:collapse; margin:2.5mm 0 3.5mm; font-size:8.4pt; }
+th { background:var(--g900); color:#fff; text-align:left; padding:2mm 2.4mm; font-weight:600; font-size:8.2pt; }
+td { padding:1.9mm 2.4mm; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:nth-child(even) td { background:#f7faf8; }
+td b, td strong { color:var(--g800); }
+
+pre { font-family:Consolas,"Courier New",monospace; font-size:8.1pt; line-height:1.42;
+  background:var(--g950); color:#cfe8da; padding:3.5mm 4mm; border-radius:2mm;
+  white-space:pre; overflow:hidden; margin:2mm 0 3mm; }
+pre.light { background:#f4f7f5; color:var(--ink); border:1px solid var(--line); }
+
+.callout { border-left:3.5px solid var(--g600); background:var(--g50); padding:2.8mm 3.5mm; border-radius:0 2mm 2mm 0; margin:2.8mm 0; }
+.callout.amber { border-color:#c9962e; background:var(--amberbg); }
+.callout.red { border-color:#c65b48; background:var(--redbg); }
+.callout .ttl { font-weight:700; color:var(--g900); font-size:8.8pt; display:block; margin-bottom:0.8mm; }
+
+.chip { display:inline-block; background:var(--g100); color:var(--g800); border:1px solid #bfe0cd;
+  border-radius:99px; padding:0.8mm 3mm; font-size:7.8pt; font-weight:600; margin:0 1mm 1.2mm 0; }
+
+.two { display:grid; grid-template-columns:1fr 1fr; gap:5mm; }
+.two.uneven { grid-template-columns:1.35fr 1fr; }
+.box { border:1px solid var(--line); border-radius:2mm; padding:3mm 3.5mm; background:#fbfcfb; }
+.box.good { border-color:#bfe0cd; background:var(--g50); }
+.box.bad { border-color:#e4c9c1; background:var(--redbg); }
+
+/* footer page numbers — absolute within each fixed-height page */
+.pfoot { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:space-between;
+  font-size:7.4pt; color:var(--faint); border-top:1px solid var(--line); padding-top:1.5mm; }
+.pfoot .brand { font-weight:700; color:var(--g700); }
+
+/* ── COVER ── */
+.cover { height:258mm; display:flex; flex-direction:column; background:linear-gradient(160deg,var(--g950) 0%,var(--g900) 55%,#0b241a 100%);
+  color:#eef5f0; border-radius:0; position:relative; overflow:hidden; }
+.cover ~ .pfoot { display:none; }
+.cover .glow { position:absolute; width:120mm; height:120mm; border-radius:50%; filter:blur(30mm); opacity:.35; }
+.cover .g1 { background:var(--g500); top:-30mm; left:-25mm; }
+.cover .g2 { background:#144b6b; bottom:-35mm; right:-25mm; }
+.cover-in { position:relative; z-index:2; padding:26mm 20mm; height:100%; display:flex; flex-direction:column; }
+.cover .eyebrow { color:#9fd8ba; letter-spacing:.22em; font-size:8.5pt; font-weight:700; text-transform:uppercase; }
+.cover h1 { font-size:37pt; color:#fff; letter-spacing:-0.02em; margin:9mm 0 2mm; line-height:1.04; }
+.cover .sub { font-size:14.5pt; color:#8fd8ae; font-weight:600; margin-bottom:5mm; }
+.cover .tag { font-size:10.5pt; color:#b9cfc2; max-width:130mm; line-height:1.55; }
+.cover .rule { height:1.5px; background:rgba(255,255,255,.18); margin:9mm 0; }
+.cover .svc { display:flex; flex-wrap:wrap; gap:2.5mm; }
+.cover .svc span { border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.05);
+  padding:1.8mm 4.5mm; border-radius:99px; font-size:8.6pt; font-weight:600; color:#dff0e6; }
+.cover .flow { margin-top:auto; font-family:Consolas,monospace; font-size:8.4pt; color:#9fd8ba;
+  background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.12); border-radius:2mm; padding:4mm 5mm; line-height:1.6; }
+.cover .meta { display:flex; justify-content:space-between; font-size:8.2pt; color:#8fb3a0; margin-top:6mm; }
+
+/* timeline */
+.tl { border-left:2.5px solid var(--g600); margin:3mm 0 3mm 3mm; padding-left:6mm; }
+.tl .stage { position:relative; margin-bottom:4.5mm; }
+.tl .stage::before { content:""; position:absolute; left:-8.2mm; top:1.2mm; width:3.6mm; height:3.6mm;
+  border-radius:50%; background:var(--g600); border:1.5px solid #fff; box-shadow:0 0 0 1.5px var(--g600); }
+.tl .stage h4 { margin:0 0 0.8mm; font-size:10pt; }
+.tl .stage .when { font-size:7.6pt; color:var(--g600); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.tl .stage p { margin-bottom:1mm; }
+
+/* decision table keep/modify */
+.tag-k { color:var(--g700); font-weight:700; }
+.tag-m { color:var(--amber); font-weight:700; }
+.tag-r { color:var(--red); font-weight:700; }
+
+.formula { font-family:Consolas,monospace; background:#f4f7f5; border:1px solid var(--line);
+  border-radius:2mm; padding:2.6mm 3.5mm; margin:2mm 0; font-size:9pt; }
+.formula .bad-w { color:var(--red); font-weight:700; }
+.formula .ok-w { color:var(--g700); font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ PAGE 1 — COVER ══════════════ -->
+<div class="page">
+  <div class="cover">
+    <div class="glow g1"></div><div class="glow g2"></div>
+    <div class="cover-in">
+      <p class="eyebrow">Technical Architecture Report · v1.0 · September 2026</p>
+      <h1>SmartSort</h1>
+      <p class="sub">Architecture Evolution &amp; Final Technical Plan</p>
+      <p class="tag"><strong style="color:#cfe8da">AI-Powered Garbage Segregation &amp; Reuse Mapping</strong><br>
+      Original Concept → Technical Refinement → Final AWS Architecture</p>
+      <div class="rule"></div>
+      <div class="svc">
+        <span>React + Vite + TypeScript</span><span>AWS Amplify</span><span>Amazon Bedrock · Nova Lite</span>
+        <span>AWS Lambda</span><span>API Gateway</span><span>Amazon DynamoDB</span>
+        <span>Amazon Location Service</span><span>Amazon S3</span>
+      </div>
+      <div class="flow">
+Capture → Compress → Classify → Confirm → Locate → Match → Rank → Display
+      </div>
+      <div class="meta">
+        <span>Prepared for: hackathon judges · mentors · engineering review</span>
+        <span>Frontend phase built &amp; verified · Backend specified</span>
+      </div>
+    </div>
+  </div>
+  <div class="pfoot"><span class="brand">SmartSort</span><span>Cover</span></div>
+</div>
+
+<!-- ══════════════ PAGE 2 — EXECUTIVE SUMMARY ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 01</span>Executive Summary</h2>
+
+  <h3>Problem</h3>
+  <p>Households generate recyclable waste daily but reliably fail three steps: they cannot identify
+  <em>what material</em> an item is, they have <em>no discovery mechanism</em> for facilities that accept it,
+  and they cannot see <em>whether it has value</em>. The result is predictable — recyclables land in
+  landfills and potential income is lost. Classification alone does not close this loop; a person holding
+  waste needs a decision, not a label.</p>
+
+  <h3>Solution</h3>
+  <p>SmartSort is a <strong>mobile-first responsive web application</strong> — no app install, opened via an
+  HTTPS URL. The user photographs a waste item; an AI service identifies the material; the user confirms or
+  corrects it; and the system returns ranked nearby facilities with distance, operating hours, verification
+  status, and an indicative value in ₹/kg. Every payout is explicitly labeled
+  <em>“Indicative market estimate — not an offer.”</em></p>
+
+  <h3>Core product flow</h3>
+<pre>Capture → Compress → Classify → Confirm → Locate → Match → Rank → Display</pre>
+
+  <h3>Core differentiation</h3>
+  <div class="callout">
+    <span class="ttl">SmartSort is not merely a waste-classification system.</span>
+    Its product value is the full bridge: <strong>Waste Identification + Facility Discovery + Distance +
+    Estimated Value</strong>. The classification is the entry point; the discovery of where waste becomes
+    worth something is the product.
+  </div>
+
+  <h3>Current status</h3>
+  <table>
+    <tr><th style="width:32%">Layer</th><th>Status</th></tr>
+    <tr><td><b>Frontend (React + Vite + TS)</b></td><td>Built, unit-tested (18/18), flow verified end-to-end in browser; mock-backed API layer behind a swappable interface</td></tr>
+    <tr><td><b>Backend (AWS)</b></td><td>Fully specified (SAM template, Lambda handlers, Bedrock prompt/schema, IAM); not yet deployed</td></tr>
+    <tr><td><b>Data</b></td><td>14-facility curated Bengaluru demo registry finalized; payouts labeled as estimates</td></tr>
+  </table>
+
+  <div class="callout amber">
+    <span class="ttl">Honesty rules honored throughout this document</span>
+    No verified AI accuracy, guaranteed latency, guaranteed payout, real-time facility availability,
+    or production readiness is claimed anywhere. Demo and estimated data are labeled as such.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>2 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 3 — ORIGINAL PLAN ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 02</span>The Original Plan (as proposed)</h2>
+  <p class="small">Recorded faithfully from the initial project proposal (Sept 2026). History is not rewritten here —
+  later sections analyze it.</p>
+
+  <h3>Proposed flow</h3>
+<pre>User
+ ↓
+Mobile / Web client          (framework TBD — React suggested)
+ ↓
+Amazon API Gateway
+ ↓
+AWS Lambda · "Classify"  ──►  Amazon Rekognition Custom Labels  (or SageMaker)
+ ↓                                (photo uploaded to Amazon S3)
+Lambda · "Match Facility"
+ ↓                             ┌─────────────────────────────┐
+DynamoDB (facility registry:  │  Amazon Location Service    │
+ location, category → buyer,  │  geocoding · distance ·     │
+ payout rates)                │  map rendering              │
+                              └─────────────────────────────┘
+ ↓
+Response: ranked facilities + map</pre>
+
+  <table>
+    <tr><th style="width:24%">Layer</th><th>Original choice</th></tr>
+    <tr><td><b>AI classification</b></td><td>Amazon Rekognition Custom Labels (default) or SageMaker custom model — decided by team before build; Claude recommended Custom Labels for speed</td></tr>
+    <tr><td><b>Storage</b></td><td>Amazon S3 for raw uploaded waste photos</td></tr>
+    <tr><td><b>Compute</b></td><td>AWS Lambda — stateless classification trigger + facility matching</td></tr>
+    <tr><td><b>API</b></td><td>Amazon API Gateway — REST endpoints to client</td></tr>
+    <tr><td><b>Database</b></td><td>Amazon DynamoDB — facility registry (location, accepted materials, payout rates)</td></tr>
+    <tr><td><b>Location</b></td><td>Amazon Location Service — geocoding, distance calculation, map rendering</td></tr>
+    <tr><td><b>Hosting</b></td><td>AWS Amplify or S3 + CloudFront (web client)</td></tr>
+    <tr><td><b>Auth (optional)</b></td><td>Amazon Cognito — user accounts, saved locations/history</td></tr>
+    <tr><td><b>Frontend</b></td><td>Mobile or web client, framework TBD (React suggested for team familiarity)</td></tr>
+    <tr><td><b>Demo data</b></td><td>Open decision — manual entry vs scraped/public data</td></tr>
+  </table>
+
+  <h3>Original milestones</h3>
+  <p class="small">Day 1 decisions + AWS setup · Day 2 upload pipeline · Day 3 classification integrated ·
+  Day 4 Amazon Location matching · Day 5 frontend map + E2E demo · Day 6 polish, testing, submission.</p>
+
+  <h3>What the original plan got right</h3>
+  <div class="box good">
+    Serverless-first shape (API Gateway → Lambda → DynamoDB) · DynamoDB as facility source of truth ·
+    Amazon Location for maps/geocoding · React-family frontend · S3 for images · a working end-to-end
+    demo as the goal. The final architecture retains all of these bones.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>3 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 4 — WHY REFINEMENT ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 03</span>Why the Original Plan Needed Refinement</h2>
+  <p class="small">Findings from three review passes (independent research review → Claude re-evaluation →
+  Claude Opus refinement → GLM consolidation). Every row traces to a concrete change shown on pages 6–12.</p>
+
+  <table>
+    <tr><th style="width:24%">Problem</th><th style="width:40%">Why it mattered</th><th>Consequence in final plan</th></tr>
+    <tr><td><b>AI training dependency</b><br><span class="tiny">Custom Labels / SageMaker</span></td><td>Custom Labels needs ~15–20+ labeled images per category and bills <b>$4/hour while a model is running</b>; SageMaker adds pipeline complexity. A dataset-collection task sat on the hackathon critical path.</td><td class="tag-m">MODIFY → Bedrock Nova Lite: zero training, zero hosting, per-request pricing</td></tr>
+    <tr><td><b>Unnecessary AWS complexity</b></td><td>Cognito accounts, hand-managed CloudFront, and an async S3-trigger pipeline each added setup and failure modes without serving the 5-day MVP.</td><td class="tag-r">REMOVED → Cognito/CloudFront cut; synchronous request/response; S3 becomes fire-and-forget archive</td></tr>
+    <tr><td><b>Image payload size</b></td><td>Modern phone photos run 3–8 MB — against API Gateway's payload ceiling, mobile bandwidth, and Bedrock token cost.</td><td class="tag-m">ADDED → client-side compression (≤1024 px, ≈≤800 KB, best-effort)</td></tr>
+    <tr><td><b>Fragile JSON parsing</b></td><td>Free-form “respond with JSON” + regex parsing breaks silently on chatty model output.</td><td class="tag-m">ADDED → Bedrock Converse API with tool/function schema + mandatory runtime validation</td></tr>
+    <tr><td><b>Human override architecture</b></td><td>A single combined endpoint meant a user-corrected category would re-invoke Bedrock — wasted cost/latency and conceptually wrong.</td><td class="tag-m">SPLIT → /classify-and-match + /match-facilities; AI runs at most once per image</td></tr>
+    <tr><td><b>Ranking weights summed to 1.1</b></td><td>0.7 + 0.3 + 0.1 = 1.1 made scores non-interpretable as shares and diluted the verification bonus.</td><td class="tag-m">REBALANCED → 0.6 / 0.3 / 0.1 (sums to 1.0), unit-tested</td></tr>
+    <tr><td><b>Facility dataset inconsistency</b></td><td>Draft used 12 facilities; “≥2 verified per category” coverage was arithmetically marginal; demo city wavered between Kolkata and Bengaluru.</td><td class="tag-m">STANDARDIZED → 14 curated Bengaluru facilities; coverage proof per category</td></tr>
+    <tr><td><b>Confidence terminology</b></td><td>Model confidence was at risk of being shown as “accuracy” — an unverifiable claim to judges.</td><td class="tag-m">RENAMED → “AI signal”, never accuracy/probability</td></tr>
+    <tr><td><b>Missing operating hours</b></td><td>A drop-off recommendation without hours can send users to a closed facility — core-flow defect, not polish.</td><td class="tag-m">ADDED → operating_hours in schema + seed data + UI</td></tr>
+    <tr><td><b>Demo-location inconsistency</b></td><td>Fallback coordinates differed between documents; demo scripts need one fixed point.</td><td class="tag-m">FIXED → Bengaluru 12.9716, 77.5946, always labeled “Demo location”</td></tr>
+    <tr><td><b>Unclear MVP boundaries</b></td><td>Login, payments, marketplace concepts floated near the MVP; risk of scope creep in 5 days.</td><td class="tag-m">LOCKED → explicit out-of-scope list; trading-platform concepts documented as future vision only</td></tr>
+  </table>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>4 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 5 — TIMELINE ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 04</span>Architecture Evolution Timeline</h2>
+
+  <div class="tl">
+    <div class="stage">
+      <p class="when">Stage 1</p>
+      <h4>Original Proposal</h4>
+      <p><strong>Key decision:</strong> serverless AWS shape; classification service undecided between
+      Rekognition Custom Labels and SageMaker.</p>
+      <p class="small"><strong>Problem later found:</strong> training dependency, per-hour model hosting cost,
+      unbounded scope. <strong>Result:</strong> everything downstream re-examined.</p>
+    </div>
+    <div class="stage">
+      <p class="when">Stage 2</p>
+      <h4>Technical Review (research-based, document-grounded)</h4>
+      <p><strong>Key decision:</strong> against current AWS docs — Custom Labels' real advantage is managed
+      hosting, not “minimal data”; its $4/hr running-model billing is a live-demo hazard; Bedrock multimodal
+      (Nova) available in ap-south-1 at per-request pricing was never evaluated.</p>
+      <p class="small"><strong>Problem discovered:</strong> highest-risk component (custom model training) sat on
+      the critical path. <strong>Result:</strong> Bedrock Nova proposed as primary classifier behind a stable
+      Lambda abstraction; Cognito and async pipelines flagged as unnecessary; dataset = curated facilities,
+      no scraping.</p>
+    </div>
+    <div class="stage">
+      <p class="when">Stage 3</p>
+      <h4>Claude Re-evaluation</h4>
+      <p><strong>Key decision:</strong> agreed with hybrid facility/map architecture (DynamoDB source of truth +
+      Location for maps/geocoding) and React web frontend; sharpened service roles (Maps render, Places geocode,
+      Haversine ranks, Routes optional).</p>
+      <p class="small"><strong>Problem discovered:</strong> classification decision still defaulted toward
+      Custom Labels; single-endpoint design persisted. <strong>Result:</strong> partial convergence — map and
+      frontend decisions locked.</p>
+    </div>
+    <div class="stage">
+      <p class="when">Stage 4</p>
+      <h4>Claude Opus Refinement</h4>
+      <p><strong>Key decisions:</strong> Bedrock Converse API with tool schema (vs regex parsing); weights
+      rebalanced 0.6/0.3/0.1; image compression added; human override made a first-class flow; Bengaluru
+      standardized as demo city; 14-facility registry; confidence renamed “AI signal”.</p>
+      <p class="small"><strong>Problem discovered:</strong> earlier plans under-specified the override path and
+      payload safety. <strong>Result:</strong> implementation-ready spec with acceptance criteria.</p>
+    </div>
+    <div class="stage">
+      <p class="when">Stage 5 — current</p>
+      <h4>Final GLM Consolidated Plan (authoritative)</h4>
+      <p><strong>Key decisions:</strong> frontend-first build with swappable mock API; two Lambdas
+      (classify-match / match-facilities); runtime validation chain regardless of schema; ranking formula
+      unit-tested with documented crossover; fallback matrix complete; demo registry with 7×≥2 verified
+      coverage proof.</p>
+      <p class="small"><strong>Status:</strong> frontend implemented and verified (18/18 tests, E2E browser
+      flow); backend fully specified, pending deployment. <strong>Result:</strong> the plan this document
+      describes.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ttl">Pattern across all five stages</span>
+    Each stage <em>removed</em> risk rather than adding features: fewer services on the demo path, fewer
+    unverifiable claims, more failure modes handled by design. The architecture got simpler as it got better.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>5 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 6 — BEFORE vs AFTER ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 05</span>Before vs After — Master Comparison</h2>
+
+  <table style="font-size:7.9pt">
+    <tr><th style="width:14%">Area</th><th style="width:26%">Earlier plan</th><th style="width:28%">Current plan</th><th style="width:32%">Why changed → benefit</th></tr>
+    <tr><td><b>Product positioning</b></td><td>“AI garbage segregation” app; classification centric</td><td>Waste-to-value discovery bridge: identify → locate → value → discover</td><td>Classification is entry point, not product → clearer pitch, clearer scope</td></tr>
+    <tr><td><b>Frontend</b></td><td>Mobile or web, framework TBD; Cognito optional</td><td>React + Vite + TypeScript responsive web on Amplify; mobile-first; no native app tech</td><td>Camera+GPS work on phone browsers over HTTPS → no store, no install, demo-ready</td></tr>
+    <tr><td><b>AI</b></td><td>Rekognition Custom Labels or SageMaker (train on own photos)</td><td>Bedrock Nova Lite via Converse API + tool schema; Custom Labels post-hackathon</td><td>Zero training/hosting on critical path → demo cannot be blocked by an ML pipeline</td></tr>
+    <tr><td><b>API</b></td><td>POST /classify-and-match (single, combined)</td><td>+ POST /match-facilities (override/manual path, no AI)</td><td>AI at most once per image → lower cost/latency, correct HITL architecture</td></tr>
+    <tr><td><b>Image processing</b></td><td>Phone image → backend as-is</td><td>Browser compression ≤1024 px, ≈≤800 KB best-effort, graceful fallback</td><td>Smaller payloads, faster uploads, lower Bedrock token cost → safer on venue Wi-Fi</td></tr>
+    <tr><td><b>Database</b></td><td>DynamoDB (shape unspecified)</td><td>DynamoDB PAY_PER_REQUEST; full schema incl. payout_basis, operating_hours, source, updated_at</td><td>Trust/audit fields first-class → honest UI, seedable registry</td></tr>
+    <tr><td><b>Facilities</b></td><td>Open decision: manual vs scraped</td><td>14 curated Bengaluru facilities; ≥2 verified per category; no scraping</td><td>Coverage proven per category → empty-result demo failure designed out</td></tr>
+    <tr><td><b>Location</b></td><td>Location Service broadly (geocode/distance/render)</td><td>Maps render · Places geocode at curation · Haversine ranks · Routes optional top-3</td><td>Each API used for what it actually does → no misuse of POI search</td></tr>
+    <tr><td><b>Ranking</b></td><td>0.7/0.3/0.1 = 1.1 (unnormalized)</td><td>0.6/0.3/0.1 = 1.0; per-set payout normalization; 5 km boundary; ties by distance</td><td>Interpretable shares, unit-tested → explainable to judges in one sentence</td></tr>
+    <tr><td><b>Map</b></td><td>Map rendering (library unspecified)</td><td>MapLibre GL JS behind abstraction; dev-safe schematic now; list never depends on map</td><td>List-first reliability → map failure cannot break the product</td></tr>
+    <tr><td><b>S3</b></td><td>Upload target in pipeline (in path)</td><td>Fire-and-forget archive of classified photos; 90-day lifecycle; public-access blocked</td><td>Storage can never fail the user flow → future training corpus for free</td></tr>
+    <tr><td><b>Authentication</b></td><td>Cognito (optional)</td><td>None in MVP; reserved post-hackathon</td><td>Removes setup + token/CORS complexity → 5-day feasibility</td></tr>
+    <tr><td><b>Infrastructure</b></td><td>Mixed console setup; CloudFront optional</td><td>AWS SAM template; one stack: API GW + 2 Lambdas + DynamoDB + S3 + Location + IAM</td><td>One deploy, reproducible → reviewable by mentors in minutes</td></tr>
+    <tr><td><b>Security</b></td><td>Unspecified</td><td>Least-privilege per-Lambda IAM; scoped S3 puts; CORS locked post-Day-1; API-key-restricted map; validation at every boundary</td><td>Provable minimal permissions → defensible in review</td></tr>
+    <tr><td><b>Fallback strategy</b></td><td>Not designed</td><td>Full matrix: AI failure, invalid tool output, GPS denial, wrong class, empty result, map/network failure, oversized image, S3 failure</td><td>Demo recovers from every identified failure → reliability by design</td></tr>
+    <tr><td><b>Testing</b></td><td>Unspecified</td><td>18 unit tests (formula, Haversine, compression, determinism) + E2E flow verification; AI evaluation planned on internal test set</td><td>Claims are backed by tests → no hand-waving under questioning</td></tr>
+    <tr><td><b>MVP scope</b></td><td>Loosely bounded; payments/marketplace adjacent</td><td>Locked: identify/confirm/locate/match/rank/display only; trading platform documented as long-term vision</td><td>Zero scope creep on critical path → shippable in 5 days</td></tr>
+  </table>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>6 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 7 — AI EVOLUTION ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 06</span>AI Architecture Evolution</h2>
+
+  <div class="two">
+    <div class="box bad">
+      <h4 style="margin-top:0">Earlier — custom-trained vision</h4>
+      <p class="small"><strong>Rekognition Custom Labels</strong> (primary candidate) or a
+      <strong>SageMaker</strong> custom CNN.</p>
+      <ul class="small">
+        <li>Collect &amp; label ~15–20+ photos per category (7 categories) under demo-like conditions</li>
+        <li>Train, then <b>start/stop a hosted model</b> — Custom Labels bills ≈$4/hour while running</li>
+        <li>SageMaker: notebook → training job → endpoint; strongest ceiling, heaviest pipeline</li>
+        <li>Single-class classifier: cluttered bins and multi-object scenes are out of scope</li>
+        <li>Post-hackathon evolution path (per original proposal), re-evaluated with real usage data</li>
+      </ul>
+    </div>
+    <div class="box good">
+      <h4 style="margin-top:0">Current — Amazon Bedrock Nova Lite</h4>
+      <ul class="small">
+        <li><b>Zero training</b>: categories defined in prompt/schema; no dataset collection on the critical path</li>
+        <li><b>Zero hosting</b>: on-demand API, per-request pricing (fractions of a cent per photo)</li>
+        <li>Multimodal: robust to clutter, multiple objects, messy real-world photos</li>
+        <li>Returns category + confidence signal + one-line rationale (material-composition prompt)</li>
+        <li>Available in ap-south-1 (Mumbai) — matches the pinned region</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>How classification is invoked</h3>
+<pre>Bedrock Converse API
+  toolConfig:  classify_waste { category: enum[7], confidence: 0..1, rationale }
+  toolChoice:  forced → { tool: "classify_waste" }
+  image:       base64 JPEG (browser-compressed) + material-composition prompt
+  temperature: 0 (deterministic)
+
+Validation chain (mandatory — schema ≠ guarantee):
+  1. toolUse block present?            → else parse text fallback
+  2. category ∈ enum?                  → else reject
+  3. confidence ∈ [0,1] (clamped)?     → else 0
+  4. failure path → retry ×2 → fallback model ID → manual category chips</pre>
+
+  <div class="callout amber">
+    <span class="ttl">Required caveat</span>
+    Bedrock's model-generated confidence is an <strong>AI signal</strong>, not a calibrated probability and not
+    independently verified accuracy. The UI shows “AI signal: 87%” and always lets the user correct the
+    category. No generalized accuracy claim is made or displayable.
+  </div>
+
+  <h3>Why this is the right hackathon trade</h3>
+  <p class="small">The MVP's risk was never model <em>quality</em> — it was model <em>operations</em>: collecting a
+  labeled dataset by deadline, hosting a model reliably, and paying while idle. Bedrock removes all three.
+  The original proposal itself anticipated this evolution (“move toward SageMaker/Bedrock once enough labeled
+  data exists”) — the review simply inverted the order: start with Bedrock, earn the custom model later using
+  the photo corpus the app archives to S3.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>7 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 8 — HUMAN-IN-THE-LOOP ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 07</span>Human-in-the-Loop Classification</h2>
+
+<pre>                ┌──────────────────────┐
+                │  AI Classification   │
+                │  Bedrock Nova Lite   │
+                └──────────┬───────────┘
+                           ▼
+                ┌──────────────────────┐
+                │ Human Confirmation   │
+                │ image · category ·   │
+                │ AI signal · rationale│
+                └──────────┬───────────┘
+                           ▼
+              ┌────────────────────────┐
+              │   Correct   OR   Override  │
+              │  (tap any of 7 chips)      │
+              └────────────┬───────────┘
+                           ▼
+                ┌──────────────────────┐
+                │  Facility Matching   │
+                │  (no AI re-run)      │
+                └──────────────────────┘</pre>
+
+  <h3>Why waste demands a human gate</h3>
+  <table>
+    <tr><th style="width:28%">Real-world case</th><th>Why the AI alone is insufficient</th></tr>
+    <tr><td><b>Dirty plastic</b></td><td>Food residue changes texture/translucency; material is still plastic — a human glance resolves instantly</td></tr>
+    <tr><td><b>Damaged items</b></td><td>Crushed cans or torn paper lose their canonical silhouette</td></tr>
+    <tr><td><b>Ambiguous materials</b></td><td>Coated paper cups (paper? plastic? both) genuinely confuse material classification</td></tr>
+    <tr><td><b>Multiple objects</b></td><td>A drawer of mixed items has no single “correct” class — the user picks what they're actually disposing</td></tr>
+    <tr><td><b>Unclear images</b></td><td>Blur/low light → low AI signal; the flow must continue, not dead-end</td></tr>
+  </table>
+
+  <div class="callout">
+    <span class="ttl">Design rule</span>
+    Confirming or overriding a category routes <strong>directly to facility matching</strong> — the backend never
+    re-runs Bedrock for a human-corrected category (lower latency, lower cost, correct semantics). Low AI
+    signal (&lt; 0.6) shows a gentle “Not completely sure — please confirm the material” nudge; it never alarms
+    and never blocks. The correction interface doubles as the manual path when the AI is entirely unavailable.
+  </div>
+
+  <p class="small"><strong>Startup story, not just UX:</strong> every user correction is a labeled training example.
+  The override stream (archived with the S3 photo corpus) is exactly the dataset a future fine-tuned classifier
+  would need — the product improves by being used.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>8 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 9 — API EVOLUTION ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 08</span>API Evolution</h2>
+
+  <div class="two">
+    <div class="box bad">
+      <h4 style="margin-top:0">Earlier — one combined endpoint</h4>
+<pre style="background:#fff;color:var(--ink);border:1px solid var(--line)">POST /classify-and-match
+{ imageBase64, lat, lng }
+      ↓
+Bedrock → match → response</pre>
+      <p class="small">A user-corrected category forced a full re-classification: wasted AI cost, wasted
+      latency, and conceptually wrong (the AI already did its job).</p>
+    </div>
+    <div class="box good">
+      <h4 style="margin-top:0">Current — separation of concerns</h4>
+<pre style="background:#fff;color:var(--ink);border:1px solid var(--line)">POST /classify-and-match
+{ imageBase64, lat, lng }
+→ AI + matching (once per image)
+
+POST /match-facilities
+{ category, lat, lng }
+→ matching ONLY (no AI)
+
+GET  /facilities   (registry/debug)
+GET  /health       (pre-demo check)</pre>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ttl">Core invariant</span>
+    <strong>AI classification happens at most once per image.</strong> Confirmation/override → /match-facilities.
+    Verifiable in logs: one Bedrock invoke per photo, regardless of how many times the user changes category.
+  </div>
+
+  <table>
+    <tr><th style="width:30%">Benefit</th><th>Why it matters</th></tr>
+    <tr><td><b>Lower cost</b></td><td>Bedrock invoked only for genuinely new images; overrides are pure compute (~100 ms, no AI)</td></tr>
+    <tr><td><b>Lower latency</b></td><td>Correction → results in a fraction of a second instead of a full AI round-trip</td></tr>
+    <tr><td><b>Cleaner separation</b></td><td>Classification Lambda holds Bedrock permission; matching Lambda is DynamoDB-only — provable cost isolation per route</td></tr>
+    <tr><td><b>Easier testing</b></td><td>Matching logic testable without any AI dependency; classification testable with canned images</td></tr>
+    <tr><td><b>Correct HITL architecture</b></td><td>The human's category decision is authoritative input to matching, not a trigger to re-guess</td></tr>
+  </table>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>9 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 10 — IMAGE PIPELINE ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 09</span>Image Pipeline</h2>
+
+  <div class="two">
+    <div class="box bad">
+      <h4 style="margin-top:0">Earlier</h4>
+<pre style="background:#fff;color:var(--ink);border:1px solid var(--line)">Phone Image
+(3–8 MB typical)
+ ↓
+API Gateway
+ ↓
+Lambda → Bedrock</pre>
+      <p class="tiny">Risks: API Gateway payload ceiling, slow uploads on mobile data, oversized Bedrock image
+      tokens, venue-Wi-Fi multipart failures.</p>
+    </div>
+    <div class="box good">
+      <h4 style="margin-top:0">Current</h4>
+<pre style="background:#fff;color:var(--ink);border:1px solid var(--line)">Phone Image
+ ↓
+Browser Compression
+(canvas, iOS-Safari-safe)
+ ↓ ≤1024 px long edge
+ ↓ JPEG q0.8 → step to q0.5
+ ↓ ≈≤800 KB target
+API Gateway
+ ↓
+Lambda
+ ↓
+Bedrock</pre>
+    </div>
+  </div>
+
+  <h3>Why compression helps</h3>
+  <ul class="small">
+    <li><b>Payload safety:</b> 10 MP phone JPEGs can exceed limits; compressed output sits far under them</li>
+    <li><b>Mobile bandwidth:</b> an ~800 KB upload is seconds on cellular; 6 MB is a demo hazard</li>
+    <li><b>Bedrock efficiency:</b> smaller images mean fewer image tokens — cheaper and faster inference</li>
+    <li><b>Quality is preserved for the task:</b> 1024 px is ample for material classification</li>
+  </ul>
+
+  <div class="callout red">
+    <span class="ttl">Honest limitation</span>
+    Client-side compression is <strong>best-effort</strong>. Quality-stepping reduces size toward ≈800 KB, but it
+    does <strong>not mathematically guarantee</strong> every payload will be accepted: pathological images
+    (noise-heavy textures compress poorly) can remain larger, and browsers without canvas support skip
+    compression entirely (the original bytes are sent as fallback). Server-side payload limits remain the
+    final guard. This is explicitly accepted as a demo-day tradeoff, not hidden.
+  </div>
+
+  <p class="tiny">Implementation note: canvas resize + JPEG re-encode in the browser (document.createElement('canvas')
+  chosen over OffscreenCanvas for iOS Safari compatibility). Compression failure never blocks the flow — the
+  app proceeds with original bytes and logs a warning.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>10 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 11 — RANKING EVOLUTION ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 10</span>Ranking Evolution</h2>
+
+  <h3>Earlier formula</h3>
+  <div class="formula">
+    0.7 × Distance&nbsp;&nbsp;+&nbsp;&nbsp;0.3 × Payout&nbsp;&nbsp;+&nbsp;&nbsp;0.1 × Verification&nbsp;&nbsp;=&nbsp;&nbsp;<span class="bad-w">1.1</span>
+  </div>
+  <p class="small">Weights summing to 1.1 meant no term was an interpretable share, the maximum achievable score
+  was 1.1, and the “verification bonus” was effectively diluted. Caught in review; fixed, not silently patched.</p>
+
+  <h3>Current formula</h3>
+  <div class="formula">
+    <span class="ok-w">0.6 × Distance + 0.3 × Payout + 0.1 × Verification = 1.0</span><br>
+    <span class="small">distance_score = max(0, 1 − distance_km / 5) · payout_score = payout / max_payout_among_eligible · verification = 1|0</span>
+  </div>
+
+  <table>
+    <tr><th style="width:26%">Component</th><th>Design decision</th></tr>
+    <tr><td><b>Distance normalization</b></td><td>Linear to a 5 km boundary, then floored at 0 — facilities beyond 5 km are <em>ranked lower, never hidden</em> (flagged “&gt;5 km” in UI)</td></tr>
+    <tr><td><b>Payout normalization</b></td><td>Divided by the best payout <em>among eligible facilities for that query</em> — scale-free across categories, self-adjusting per result set; denominator floored at 1 (no div-by-zero for free municipal drop-offs)</td></tr>
+    <tr><td><b>Verification bonus</b></td><td>Bonus, <em>not a filter</em> — unverified facilities rank lower and carry a visible badge but are never suppressed</td></tr>
+    <tr><td><b>Raw scores</b></td><td>Internal only. Users see ordered results, distance, estimated value, badges — never “0.756”, which means nothing to a household</td></tr>
+    <tr><td><b>Crossover behavior</b></td><td>Documented and unit-tested: at these weights, a large payout gap <em>can</em> legitimately overcome a short distance gap (~2 km) — correct for bulk quantities, and the roadmap story for weight personalization</td></tr>
+  </table>
+
+  <h3>Worked example (unit-tested)</h3>
+<pre>Scenario: verified facilities, plastic, max eligible payout = ₹30/kg
+
+A: 1.0 km, ₹20/kg
+   distance = 1 − 1.0/5 = 0.80 → 0.6 × 0.80 = 0.480
+   payout   = 20/30 = 0.667    → 0.3 × 0.667 ≈ 0.200
+   verified = 1                → 0.1 × 1    = 0.100
+   SCORE = 0.780                                          ◄ ranks first
+
+B: 2.0 km, ₹30/kg
+   distance = 1 − 2.0/5 = 0.60 → 0.6 × 0.60 = 0.360
+   payout   = 30/30 = 1.00     → 0.3 × 1.00 = 0.300
+   verified = 1                → 0.1 × 1    = 0.100
+   SCORE = 0.760
+
+A wins: at household scale (a few kg), ₹10/kg more does not justify
+double the travel. Payout CAN win — but only over larger gaps or with
+bulk quantities (the documented crossover at distance-weight ≈ 0.61).</pre>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>11 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 12 — FACILITY DATA ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 11</span>Facility Data Evolution</h2>
+
+  <h3>12 facilities (draft, mixed city) → 14 curated facilities (Bengaluru, standardized)</h3>
+  <table>
+    <tr><th style="width:34%">Aspect</th><th>Decision</th></tr>
+    <tr><td><b>Demo city standardized</b></td><td>Bengaluru (12.9716, 77.5946) — earlier documents wavered (Kolkata vs Bengaluru); one fixed demo point with a labeled “Use Demo Location” fallback</td></tr>
+    <tr><td><b>Why 14</b></td><td>Minimum that satisfies the coverage rule with margin: every one of the 7 categories accepted by <b>≥ 2 verified facilities within ~4.5 km</b>. At 12, several categories sat at exactly 2 — one bad record from an empty result on stage</td></tr>
+    <tr><td><b>Category coverage</b></td><td>plastic 5 · paper 5 · metal 5 · glass 3 · e-waste 3 · organic 2 · other 2 (verified facilities) — incl. one municipal drop-off accepting all categories</td></tr>
+    <tr><td><b>Verified / unverified</b></td><td>13 verified (field-visit / municipal-listing sources) + 1 deliberately unverified (directory-listing) to exercise the badge + ranking penalty path live</td></tr>
+    <tr><td><b>Operating hours</b></td><td>Present on every record — added after review flagged that a “nearest facility” that is closed is a wrong answer</td></tr>
+    <tr><td><b>Payout values</b></td><td><b>Estimates, ₹/kg, explicitly labeled</b> (<code>payout_basis: "estimated"</code>); UI disclaimer on every card: “Indicative market estimate — not an offer.” No guaranteed or real-time rates claimed</td></tr>
+    <tr><td><b>Sourcing</b></td><td>Manual curation from publicly available / legally usable information. <b>No scraping dependency</b> — scraped rows lack the accepted-categories/payout/trust fields ranking needs, and ToS-restricted sources were excluded on principle</td></tr>
+  </table>
+
+  <div class="two">
+    <div class="box">
+      <h4>What this IS</h4>
+      <p class="small"><strong>Curated demo registry</strong> — sufficient, verified, honest seed data that makes
+      the ranking engine and demo flow real. Fixed IDs; idempotent seed loader; versioned in git.</p>
+    </div>
+    <div class="box">
+      <h4>What this is NOT</h4>
+      <p class="small"><strong>A real-time production marketplace.</strong> No live availability, no live pricing,
+      no guaranteed acceptance. Those require facility onboarding, verification workflows, and market-rate feeds
+      (post-hackathon / long-term roadmap).</p>
+    </div>
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>12 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 13 — FINAL ARCHITECTURE ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 12</span>Final AWS Architecture</h2>
+
+<pre>                    ┌─────────────────────────────┐
+                    │     SMARTSORT WEB APP       │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │  React + Vite + TypeScript  │
+                    │  mobile-first · camera ·    │
+                    │  browser geolocation        │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │   AWS Amplify Hosting       │
+                    │   HTTPS + global CDN        │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │   API Gateway (HTTP API)    │
+                    │   CORS · throttling         │
+                    └───────┬──────────────┬──────┘
+                            ▼              ▼
+              ┌───────────────────┐  ┌───────────────────┐
+              │ Classify Lambda   │  │  Match Lambda     │
+              │ /classify-and-    │  │  /match-facilities│
+              │ match (+/health)  │  │  (no Bedrock IAM) │
+              └─────────┬─────────┘  └─────────┬─────────┘
+                        ▼                      │
+              ┌───────────────────┐            │
+              │  Amazon Bedrock   │            │
+              │  Nova Lite        │            │
+              │  Converse + tool  │            │
+              │  schema           │            │
+              └─────────┬─────────┘            │
+                        │ category             │
+                        └──────────┬───────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │   DynamoDB · Facilities     │
+                    │   (source of truth)         │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │  Filter → Haversine →       │
+                    │  0.6/0.3/0.1 Rank → top 5   │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │  Results (ranked JSON)      │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │  MapLibre GL JS +           │
+                    │  Amazon Location Maps       │
+                    │  (enhancement — list-first) │
+                    └─────────────────────────────┘
+
+        ┌───────────────┐  fire-and-forget
+        │  Amazon S3    │  (classified photos →
+        │  uploads/     │   future training corpus;
+        └───────────────┘   never blocks response)</pre>
+
+  <table style="font-size:8pt">
+    <tr><th style="width:26%">Service</th><th>Why it earns its place</th></tr>
+    <tr><td><b>Amplify Hosting</b></td><td>HTTPS + CDN + CI in minutes — HTTPS is a hard requirement for camera/geolocation on browsers</td></tr>
+    <tr><td><b>API Gateway HTTP API</b></td><td>Cheapest API entry point; CORS; throttling; single public boundary</td></tr>
+    <tr><td><b>Lambda ×2</b></td><td>Node 20 arm64, 512 MB, 15 s; split by responsibility (AI vs pure matching) with per-function least-privilege IAM</td></tr>
+    <tr><td><b>Bedrock Nova Lite</b></td><td>Multimodal classification, zero training/hosting, ap-south-1, per-request pricing</td></tr>
+    <tr><td><b>DynamoDB</b></td><td>PAY_PER_REQUEST; serverless source of truth for domain data no map provider has (accepted categories, payout estimates, verification)</td></tr>
+    <tr><td><b>S3</b></td><td>Photo archive + future training corpus; blocked public access; 90-day lifecycle; out of the synchronous path</td></tr>
+    <tr><td><b>Amazon Location</b></td><td>Maps tiles via API key (no Cognito); Places geocoding during curation; Routes optional for top-3 driving distance</td></tr>
+  </table>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>13 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 14 — WHY MORE PRACTICAL ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 13</span>Why the Current Architecture Is More Practical</h2>
+  <p class="small">Framing: the current architecture is <strong>better aligned with the SmartSort MVP and the
+  hackathon constraints</strong> — not universally superior. A SageMaker pipeline with a trained waste model is
+  the stronger <em>long-term</em> ML play; it is simply the wrong <em>5-day</em> play.</p>
+
+  <table>
+    <tr><th style="width:20%">Dimension</th><th>Assessment</th></tr>
+    <tr><td><b>Product clarity</b></td><td>One sentence — “photograph waste, find where it's worth something” — maps 1:1 to screens and endpoints. The earlier framing buried the discovery bridge under the classifier.</td></tr>
+    <tr><td><b>Engineering complexity</b></td><td>One SAM stack, two functions, one table, one bucket. Every removed service (Cognito, CloudFront, async triggers) removed a failure mode and setup hours.</td></tr>
+    <tr><td><b>AI practicality</b></td><td>No dataset deadline, no model hosting, no $4/hr idle billing; rationale output demos beautifully; validation chain handles the failure modes regex parsing couldn't.</td></tr>
+    <tr><td><b>Cost</b></td><td>Hackathon-spend bounded: pennies of Bedrock per photo; DynamoDB/S3/Lambda effectively free-tier at demo scale; compression reduces token cost; one Bedrock call per image by design.</td></tr>
+    <tr><td><b>Reliability</b></td><td>List-first product; labeled demo-location fallback; retry→fallback-model→manual-chips ladder; empty state designed out via seed coverage — the demo cannot dead-end in a blank screen.</td></tr>
+    <tr><td><b>Hackathon feasibility</b></td><td>Frontend already built and verified; backend is a template deploy + seed run away. Every remaining task is mechanical, not exploratory.</td></tr>
+    <tr><td><b>Security</b></td><td>Least-privilege per function (matching Lambda literally cannot invoke Bedrock); scoped S3 writes; map API key restricted; CORS tightened after Day 1.</td></tr>
+    <tr><td><b>Testing</b></td><td>The ranking formula, Haversine, compression, and classifier determinism are unit-tested — the parts judges probe are the parts with proofs.</td></tr>
+    <tr><td><b>Future scalability</b></td><td>The Lambda abstraction survives model swaps (Nova → fine-tuned custom); S3 corpus + override stream feed that fine-tuning; DynamoDB key design leaves room for geohash; nothing is thrown away post-hackathon.</td></tr>
+  </table>
+
+  <div class="callout">
+    <span class="ttl">Where the earlier plans were genuinely stronger</span>
+    Custom-model classification offers a higher accuracy ceiling on domain-specific Indian waste streams;
+    managed CloudFront distributions offer more control than Amplify's opinions; Cognito-native user accounts
+    would jump-start retention features. These are acknowledged — and deliberately deferred, with the seams to
+    add them back already in place.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>14 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 15 — RELIABILITY ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 14</span>Reliability &amp; Failure Handling</h2>
+
+  <table>
+    <tr><th style="width:20%">Failure</th><th style="width:22%">Detection</th><th style="width:29%">Automatic handling</th><th>User fallback</th></tr>
+    <tr><td><b>Bedrock failure / throttle</b></td><td>Invoke error / timeout</td><td>Retry ×2 → alternate model ID</td><td>Manual category chips → /match-facilities</td></tr>
+    <tr><td><b>Invalid tool output</b></td><td>Validation chain throw</td><td>Retry ×2 → fallback model → text-parse fallback</td><td>Manual chips</td></tr>
+    <tr><td><b>GPS denied / timeout</b></td><td>onerror / 10 s timeout</td><td>Typed failure status</td><td>“Use Demo Location” (labeled, Bengaluru) + map pin</td></tr>
+    <tr><td><b>Wrong classification</b></td><td>AI signal &lt; 0.6 + user review</td><td>Gentle “not completely sure” nudge; top guesses</td><td>One-tap override → direct to matching (no AI re-run)</td></tr>
+    <tr><td><b>No matching facility</b></td><td>0 after category filter</td><td>Empty state with “try a larger search area”</td><td>Category change / radius expand (seed coverage makes this rare by design)</td></tr>
+    <tr><td><b>Map / tile failure</b></td><td>Renderer error / tile timeout</td><td>“Map unavailable” note</td><td><b>Ranked list persists — the product continues unaffected</b></td></tr>
+    <tr><td><b>Network failure</b></td><td>Fetch timeout / abort</td><td>Retryable error state (client retry ×2)</td><td>Retry button; hotspot; demo-mode canned responses; backup video</td></tr>
+    <tr><td><b>Oversized image</b></td><td>Post-compression size</td><td>Quality-stepping to q0.5; proceed with original if codec fails</td><td>Accepted best-effort; server limits remain the final guard</td></tr>
+    <tr><td><b>S3 write failure</b></td><td>Promise rejection (caught)</td><td>Silently skipped — never blocks or fails the response</td><td>None needed; archive is non-critical by design</td></tr>
+  </table>
+
+  <div class="callout">
+    <span class="ttl">Design invariant</span>
+    <strong>The list is the core product; the map is an enhancement.</strong> Every screen remains fully
+    functional with zero maps, zero GPS, and zero AI (manual chips) — the demo cannot hard-fail into a blank
+    screen.
+  </div>
+
+  <p class="small"><strong>Demo-day protocol:</strong> cellular data instead of venue Wi-Fi · pre-loaded demo
+  photos · demo-mode toggle armed · backup video on a second device · three successful full rehearsals before
+  doors open · demo freeze at Day-5 noon: after that, only reliability fixes, no features.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>15 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 16 — SECURITY & COST ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 15</span>Security &amp; Cost</h2>
+
+  <div class="two">
+    <div>
+      <h3 style="margin-top:0">Security</h3>
+      <table style="font-size:8pt">
+        <tr><td><b>Private S3</b></td><td>Public access blocked on all four axes; uploads written by Lambda only</td></tr>
+        <tr><td><b>Least-privilege IAM</b></td><td>Per-function: classify = Bedrock invoke + Scan + scoped PutObject (<code>uploads/*</code>); match = Scan only — cannot touch Bedrock</td></tr>
+        <tr><td><b>CORS</b></td><td>Open only during Day-1 bring-up; locked to the Amplify domain thereafter</td></tr>
+        <tr><td><b>Map API key</b></td><td>Amazon Location key restricted to map APIs + referrer; no Cognito in the public path</td></tr>
+        <tr><td><b>Input validation</b></td><td>Category enum, confidence clamp, image type/size checks at the Lambda boundary</td></tr>
+        <tr><td><b>Coordinate validation</b></td><td>lat/lng range checks (−90…90 / −180…180) before distance math</td></tr>
+        <tr><td><b>Image validation</b></td><td>Base64-decodable, declared type, size ceiling before Bedrock invoke</td></tr>
+        <tr><td><b>Payload limits</b></td><td>API Gateway + Lambda request-size ceilings enforced server-side (final guard behind best-effort compression)</td></tr>
+        <tr><td><b>API throttling</b></td><td>Gateway default throttling/burst retained; protects the free tier from demo spikes</td></tr>
+        <tr><td><b>Secrets management</b></td><td>No secrets in the frontend; env vars per stage; map key is the only public-by-design credential and is referrer-scoped</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Cost controls</h3>
+      <table style="font-size:8pt">
+        <tr><td><b>Client compression</b></td><td>≤1024 px / ≈≤800 KB → fewer Bedrock image tokens per call</td></tr>
+        <tr><td><b>Bedrock once per image</b></td><td>Override path is AI-free by architecture, not by discipline</td></tr>
+        <tr><td><b>DynamoDB PAY_PER_REQUEST</b></td><td>Zero idle cost at rest; demo-scale reads are free-tier</td></tr>
+        <tr><td><b>Small dataset</b></td><td>14-item Scan is effectively free; no geospatial index to feed</td></tr>
+        <tr><td><b>S3 lifecycle</b></td><td>90-day expiration on uploads caps storage spend permanently</td></tr>
+        <tr><td><b>API throttling</b></td><td>Bounded request rate bounds worst-case spend</td></tr>
+        <tr><td><b>Billing alarm</b></td><td>CloudWatch alarm at a low threshold as a circuit breaker</td></tr>
+      </table>
+      <div class="callout amber" style="margin-top:3mm">
+        <span class="ttl">MVP vs hardening</span>
+        The left column is <strong>MVP essentials</strong> (in the SAM template / designed now).
+        Rate-limiting per user, WAF, audit logging, and KMS at rest are <strong>future hardening</strong> —
+        deliberately out of the 5-day scope and labeled as such.
+      </div>
+    </div>
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>16 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 17 — TESTING ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 16</span>Testing &amp; Validation</h2>
+
+  <div class="two">
+    <div class="box">
+      <h4 style="margin-top:0">Unit — 18 tests, all green</h4>
+      <ul class="small">
+        <li><b>Ranking:</b> weights sum to 1.0; worked example A 0.780 &gt; B 0.760; 5 km floor (&gt;5 km flagged, never hidden); unverified penalty = exactly 0.1 and never filtered out; payout normalization vs best-eligible; tie-break by distance; top-5 cap; zero-payout safe</li>
+        <li><b>Haversine:</b> zero-distance identity; known Bengaluru pair ≈3.75 km; 0.01° ≈ 1.11 km hand-check; symmetry</li>
+        <li><b>Compression:</b> ≤1024 px geometry rule; small images never upscaled; graceful fellBack path when the codec fails</li>
+        <li><b>Mock classifier:</b> valid category from strict union; deterministic same-bytes-same-verdict; confidence in [0,1]; low-signal band exercised</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4 style="margin-top:0">Integration (backend phase)</h4>
+      <ul class="small">
+        <li><b>API:</b> contract tests for both POSTs + /health from the real gateway; CORS verified from the deployed domain</li>
+        <li><b>Bedrock:</b> canned images → schema-valid verdicts; malformed-output → retry ladder; fallback model ID swap</li>
+        <li><b>DynamoDB:</b> seed loader idempotency; Scan → expected 14 items; per-category coverage counts</li>
+        <li><b>S3:</b> archive write succeeds; failure does not affect the response (by test, not by hope)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="box">
+      <h4 style="margin-top:0">Frontend (verified in-browser)</h4>
+      <ul class="small">
+        <li>Camera/file input → preview → compression → staged loading</li>
+        <li>Override chip → results <em>without</em> re-classification (log-verified invariant)</li>
+        <li>Location: granted / denied / timeout → labeled demo fallback</li>
+        <li>Result rendering: Best-match badge, pills, disclaimer on every card</li>
+        <li>Map degradation → list-only with note</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4 style="margin-top:0">Real-device matrix (planned)</h4>
+      <ul class="small">
+        <li>Android Chrome + iOS Safari (camera capture attribute, permission prompts)</li>
+        <li>Cellular network (not venue Wi-Fi) full-flow run</li>
+        <li>Location permission grant <em>and</em> denial paths</li>
+        <li>Native camera handoff from the capture input</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>AI evaluation — scoped honestly</h3>
+  <div class="callout amber">
+    <span class="ttl">Small internal test set — no generalized claims</span>
+    A ~20–30 image internal set (a few per category, including dirty/damaged/multi-object cases) will be run
+    through the deployed classifier to produce a confusion snapshot for the team. Results inform prompt
+    iteration and demo photo selection. They do <strong>not</strong> support any claim of verified accuracy,
+    and none will be made — the UI deliberately says “AI signal”.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>17 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 18 — MVP vs FUTURE ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 17</span>MVP → Post-Hackathon → Long-Term</h2>
+
+  <table>
+    <tr><th style="width:33%">MVP (this hackathon)</th><th style="width:33%">Post-hackathon</th><th>Long-term vision</th></tr>
+    <tr><td>
+      ✔ AI classification (Bedrock Nova)<br>
+      ✔ Human confirmation / override<br>
+      ✔ Facility discovery (14-facility curated registry)<br>
+      ✔ Transparent 0.6/0.3/0.1 ranking<br>
+      ✔ Estimated value, clearly labeled<br>
+      ✔ Map (list-first, MapLibre + Location)<br>
+      ✔ AWS backend (SAM: API GW, Lambda×2, DynamoDB, S3)<br>
+      <span class="tiny">Explicitly out: accounts, payments, marketplace, notifications</span>
+    </td><td>
+      ○ User accounts (Cognito) + scan history<br>
+      ○ Facility onboarding &amp; verification workflows<br>
+      ○ Live/verified payout rates (dealer feed)<br>
+      ○ Routes v2 driving distance for top-3<br>
+      ○ Richer waste taxonomy (sub-categories)<br>
+      ○ Multilingual UI (regional languages)<br>
+      ○ Notifications &amp; collection drives<br>
+      ○ Custom classifier trained on the S3 + override corpus
+    </td><td>
+      ○ Waste listings by households &amp; offices<br>
+      ○ Aggregation for apartments/societies<br>
+      ○ Recycler marketplace with discovery<br>
+      ○ Bidding on available materials<br>
+      ○ Verified market prices replace estimates<br>
+      ○ Payments in-platform<br>
+      ○ Logistics &amp; multi-stop route optimization<br>
+      ○ Municipal waste-system integration<br>
+      ○ Carbon / impact tracking &amp; reporting
+    </td></tr>
+  </table>
+
+  <div class="callout">
+    <span class="ttl">Sequencing logic</span>
+    The MVP deliberately builds only <strong>Identify → Locate → Value → Discover</strong> — the foundation the
+    trading platform stands on. Registry, taxonomy, ranking, and valuation concepts are designed
+    <em>now</em> to evolve into it: fixed facility IDs survive onboarding; the override stream becomes training
+    data; per-category payout fields become market-rate slots. Nothing in the MVP pretends to be the
+    marketplace; nothing in the marketplace requires rewriting the MVP.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>18 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 19 — TRADEOFFS ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 18</span>Tradeoffs &amp; Limitations (stated plainly)</h2>
+
+  <table style="font-size:8pt">
+    <tr><th style="width:17%">Choice</th><th style="width:26%">Advantage</th><th style="width:29%">Limitation</th><th>Future improvement</th></tr>
+    <tr><td><b>Bedrock vs custom classifier</b></td><td>Zero training/hosting; demo cannot be blocked by an ML pipeline; strong on clutter/multi-object</td><td>Per-call cost at scale; domain accuracy on Indian waste streams unproven; confidence is a signal, not a calibration</td><td>Fine-tune on the S3 + override corpus; Custom Labels/SageMaker behind the same Lambda; calibrated confidence</td></tr>
+    <tr><td><b>Haversine vs driving distance</b></td><td>Sub-millisecond, zero dependencies, zero failure modes at 14 records</td><td>Straight-line distance ignores barriers/traffic — a 1.2 km walk can cross a highway</td><td>Routes v2 re-score for top-3 finalists (already specced as optional)</td></tr>
+    <tr><td><b>Curated vs real-time facilities</b></td><td>Verified, honest, demo-proof data with coverage guarantees</td><td>No live availability/hours changes; static snapshot</td><td>Facility onboarding + verification workflow; freshness timestamps surfaced</td></tr>
+    <tr><td><b>Estimated payout vs live price</b></td><td>Zero legal/commercial exposure; labeled honestly</td><td>Rates vary by dealer/quality; can disappoint vs expectation</td><td>Dealer price feed → verified rates; disclaimers step down as confidence rises</td></tr>
+    <tr><td><b>DynamoDB Scan vs geospatial index</b></td><td>Right-sized for ≤hundreds of facilities; trivially testable</td><td>Does not scale to thousands+ (scan cost grows linearly)</td><td>Geohash partition keys at hundreds; PostGIS/OpenSearch geo at thousands</td></tr>
+    <tr><td><b>Browser geolocation</b></td><td>No app install; one API; works on modern phones</td><td>Secure-context only; permission prompts; indoor accuracy varies; can be denied</td><td>Labeled demo fallback (shipped); manual map pin; IP-assist heuristics</td></tr>
+    <tr><td><b>“AI signal” wording</b></td><td>Zero unverifiable claims under questioning</td><td>Less impressive-sounding than “98% accurate”</td><td>A real evaluation on a proper labeled set would <em>earn</em> an accuracy statement</td></tr>
+    <tr><td><b>Small AI evaluation set</b></td><td>Honest, fast, actionable for prompt iteration</td><td>No statistical power; per-category picture incomplete</td><td>Grow the internal set from real usage; publish the confusion matrix internally</td></tr>
+  </table>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>19 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 20 — FINAL SUMMARY ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 19</span>Final Technical Summary</h2>
+
+  <h3>The 60–90 second technical explanation (for judges)</h3>
+  <div class="callout">
+    <p style="margin:0">“SmartSort is a <strong>mobile-first responsive web application</strong> — React, Vite and
+    TypeScript on AWS Amplify — so users just open a URL; nothing to install. You photograph a waste item; the
+    browser compresses it to under a megabyte; <strong>Amazon Bedrock's Nova Lite</strong> classifies the
+    <em>material</em> — plastic, paper, metal, glass, e-waste, organic, or other — through the Converse API with
+    a forced tool schema, and we validate that output at runtime. Classification is at most once per image: a
+    separate <code>/match-facilities</code> endpoint serves human corrections without re-invoking the model.
+    The confirmed category plus your location — with a clearly labeled demo fallback if GPS is denied — goes to
+    a <strong>Lambda</strong> that reads a <strong>DynamoDB</strong> registry of 14 curated Bengaluru facilities,
+    filters by accepted category, computes <strong>Haversine</strong> distance, and ranks with a transparent,
+    unit-tested formula: 60% distance, 30% estimated value, 10% verification trust. Results render as ranked
+    cards with hours, contacts, and an indicative ₹/kg that is always labeled an estimate — never an offer —
+    plus a <strong>MapLibre + Amazon Location</strong> map that's an enhancement, never a dependency. Every
+    failure has a designed fallback, and photos archive to <strong>S3</strong> fire-and-forget, building the
+    training corpus for a custom model later. The whole backend is one SAM template.”</p>
+  </div>
+
+  <h3>The 30–45 second non-technical explanation</h3>
+  <div class="callout">
+    <p style="margin:0">“You know how you never know what to do with stuff you're throwing out — whether it can
+    be recycled, or if it's worth money? SmartSort fixes that. You take a photo of the item. The app tells you
+    what material it is, shows you the recycling and scrap centers near you that actually accept it, how far
+    they are, when they're open, and roughly what it could be worth. You always confirm the category yourself —
+    the AI is a helper, not the boss. Nothing to install: it just runs in your phone's browser.”</p>
+  </div>
+
+  <h3>The one-breath product definition</h3>
+  <p><strong>SmartSort — an AI-powered responsive web platform for waste classification and recycling/reuse
+  facility discovery:</strong> Waste → Identification → Location → Facility → Value.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>20 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 21 — CHECKLIST ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 20</span>Final Go / No-Go Checklist</h2>
+
+  <div class="two">
+    <div>
+      <h3 style="margin-top:0">Frontend</h3>
+      <table style="font-size:8pt">
+        <tr><td style="width:6mm">☑</td><td>React+Vite+TS builds clean (strict TS)</td></tr>
+        <tr><td>☑</td><td>Capture → compress → classify → confirm → results flow E2E</td></tr>
+        <tr><td>☑</td><td>Override chips skip re-classification (verified)</td></tr>
+        <tr><td>☑</td><td>Location granted/denied/timeout → labeled demo fallback</td></tr>
+        <tr><td>☑</td><td>Mock API behind swappable interface; no mock data in components</td></tr>
+        <tr><td>☐</td><td>Mobile device-matrix pass (iOS Safari / Android Chrome)</td></tr>
+        <tr><td>☐</td><td>MapLibre + Location tiles wired (needs map phase)</td></tr>
+      </table>
+      <h3>AI</h3>
+      <table style="font-size:8pt">
+        <tr><td style="width:6mm">☑</td><td>Converse + tool schema + runtime validation designed</td></tr>
+        <tr><td>☑</td><td>“AI signal” terminology everywhere; no accuracy claims</td></tr>
+        <tr><td>☐</td><td>Live Bedrock call verified with real images (backend phase)</td></tr>
+        <tr><td>☐</td><td>Fallback model ID configured &amp; tested</td></tr>
+        <tr><td>☐</td><td>Internal 20–30 image evaluation run</td></tr>
+      </table>
+      <h3>Backend</h3>
+      <table style="font-size:8pt">
+        <tr><td style="width:6mm">☑</td><td>SAM template + handler code specified</td></tr>
+        <tr><td>☑</td><td>Seed dataset finalized (14, coverage-proven)</td></tr>
+        <tr><td>☐</td><td>sam deploy --guided to ap-south-1</td></tr>
+        <tr><td>☐</td><td>Seed loader executed; /facilities returns 14</td></tr>
+        <tr><td>☐</td><td>CORS locked to deployed domain</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-top:0">AWS / Infra</h3>
+      <table style="font-size:8pt">
+        <tr><td style="width:6mm">☐</td><td>Location Map resource + restricted API key</td></tr>
+        <tr><td>☐</td><td>Amplify Hosting serving the built SPA (HTTPS)</td></tr>
+        <tr><td>☐</td><td>Billing alarm set; free-tier watch</td></tr>
+        <tr><td>☐</td><td>Env vars per stage (no secrets in git)</td></tr>
+      </table>
+      <h3>Security</h3>
+      <table style="font-size:8pt">
+        <tr><td>☑</td><td>Least-privilege IAM per function (in template)</td></tr>
+        <tr><td>☑</td><td>S3 public access blocked + 90-day lifecycle</td></tr>
+        <tr><td>☐</td><td>Post-deploy IAM verification (match λ has no Bedrock)</td></tr>
+      </table>
+      <h3>Testing</h3>
+      <table style="font-size:8pt">
+        <tr><td>☑</td><td>18/18 unit tests (formula, geo, compression, classifier)</td></tr>
+        <tr><td>☑</td><td>Production build green</td></tr>
+        <tr><td>☐</td><td>API contract tests vs deployed gateway</td></tr>
+        <tr><td>☐</td><td>3 full rehearsals on cellular</td></tr>
+      </table>
+      <h3>Demo &amp; Docs</h3>
+      <table style="font-size:8pt">
+        <tr><td>☐</td><td>Demo-mode toggle + backup video recorded</td></tr>
+        <tr><td>☐</td><td>Runbook (script + fallbacks) printed</td></tr>
+        <tr><td>☑</td><td>This architecture report</td></tr>
+        <tr><td>☐</td><td>README + repo cleanup for judges</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ttl">Go / No-Go rule</span>
+    <strong>Go</strong> = every ☑ above plus at minimum: deployed stack, seeded table, one live Bedrock image
+    classified E2E, three rehearsals, backup video. If any of those five are missing on demo morning, present
+    with the verified mock flow + video — never improvise on stage.
+  </div>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>21 / 22</span></div>
+</div>
+
+<!-- ══════════════ PAGE 22 — EVOLUTION SUMMARY ══════════════ -->
+<div class="page">
+  <h2 class="sec"><span class="no">SECTION 21</span>The Evolution, End to End</h2>
+
+<pre style="font-size:8.6pt; line-height:1.55">
+        ORIGINAL SMARTSORT
+        serverless shape · classifier undecided · scope unbounded
+                          │
+                          ▼
+        More services + training possibilities
+        Rekognition Custom Labels / SageMaker · Cognito · async pipelines
+                          │
+                          ▼
+        Technical review identifies complexity
+        $4/hr model hosting · dataset on critical path · payload risk
+        0.7+0.3+0.1 = 1.1 · single-endpoint override · demo-city drift
+                          │
+                          ▼
+        Bedrock + simplified architecture
+        Nova Lite · zero training/hosting · Cognito & CloudFront cut
+        S3 → fire-and-forget archive
+                          │
+                          ▼
+        Human-in-the-loop + separate matching
+        7 override chips · AI at most once per image · /match-facilities
+                          │
+                          ▼
+        Client-side compression
+        ≤1024 px · ≈≤800 KB best-effort · honest about its limits
+                          │
+                          ▼
+        Normalized ranking
+        0.6/0.3/0.1 = 1.0 · 5 km floor · payout per-set · tested crossover
+                          │
+                          ▼
+        Reliable fallbacks
+        retry → fallback model → manual chips · demo location · list-first
+                          │
+                          ▼
+        14-facility Bengaluru demo registry
+        7 categories × ≥2 verified · labeled estimates · operating hours
+                          │
+                          ▼
+              ████████████████████████████
+              ████  FINAL SMARTSORT  ████
+              mobile-first web app · Bedrock-classified
+              human-confirmed · facility-ranked · value-labeled
+              one SAM stack away from live
+              ████████████████████████████
+</pre>
+
+  <div class="callout" style="margin-top:5mm">
+    <p style="margin:0; font-size:10.5pt; line-height:1.6"><strong>Original SmartSort → Technical Problems →
+    Evidence-Based Refinement → Simplified AWS Architecture → Reliable MVP → Foundation for the Waste Trading
+    Platform.</strong></p>
+  </div>
+
+  <p class="small" style="margin-top:6mm">The architecture didn't grow up. It grew <em>down</em> — onto fewer,
+  stronger foundations. That is what makes it defensible in a five-day hackathon and extensible into a
+  company.</p>
+
+  <div class="pfoot"><span class="brand">SmartSort — Architecture Evolution</span><span>22 / 22</span></div>
+</div>
+
+</body>
+</html>
