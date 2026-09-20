@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { SearchX, Locate, CheckCircle2 } from 'lucide-react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Card, CardHeader } from '../components/ui/Card';
@@ -8,11 +8,12 @@ import { Table, TBody, TD, TH, THead, TR } from '../components/ui/Table';
 import { EmptyState } from '../components/ui/Skeleton';
 import { PICKUPS } from '../data/listings';
 import { formatDate, formatQuantity, formatPricePerKg } from '../lib/format';
-import { MapView } from '../components/MapView';
 import { FACILITIES } from '../mock/facilities';
 import { rankFacilitiesByDistance } from '../lib/haversine';
 import { useToast } from '../hooks/useToast';
 import type { Location } from '../types';
+
+const PickupMap3D = lazy(() => import('../components/pickups/PickupMap3D'));
 
 export function Pickups() {
   const { toast } = useToast();
@@ -60,17 +61,18 @@ export function Pickups() {
                 Use my location
               </Button>
             </div>
-            <MapView
-              center={pickupLoc}
-              userLocation={userLoc}
-              matches={matches}
-              selectedFacilityId={selectedFacility}
-              onSelectFacility={setSelectedFacility}
-              draggableMarker
-              fullHeight
-              onLocationChange={setPickupLoc}
-              caption="Drag the pin to set your exact pickup location."
-            />
+            <div className="flex-1 relative min-h-[400px]">
+              <Suspense fallback={<div className="w-full h-full bg-surface-2/50 rounded-lg animate-pulse" />}>
+                <PickupMap3D
+                  center={pickupLoc}
+                  userLocation={userLoc}
+                  matches={matches}
+                  selectedFacilityId={selectedFacility}
+                  onSelectFacility={setSelectedFacility}
+                  onLocationChange={setPickupLoc}
+                />
+              </Suspense>
+            </div>
           </Card>
 
           <Card className="flex flex-col overflow-hidden">

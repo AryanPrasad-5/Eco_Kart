@@ -1,128 +1,230 @@
-import { useMemo, useRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import type { Group, Mesh } from 'three';
+import { useRef, useEffect, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 
-/**
- * WasteX hero visual — an abstract "materials exchange" sculpture:
- * compressed stock blocks (bales, ingots, cubes) hovering in a dark
- * exchange hall, lit by one emerald edge. Premium hardware-product
- * energy, not recycling imagery.
- *
- * Interaction: pointer parallax (the stack leans toward the cursor).
- * Mobile (<720px): renders a reduced static version — no per-frame work.
- * Failure: any WebGL/chunk error is swallowed by the boundary in Hero.
- */
-
-type BlockKind = 'bale' | 'ingot' | 'cube' | 'slab';
-
-interface BlockSpec {
-  kind: BlockKind;
-  position: readonly [number, number, number];
-  scale: number;
-  color: string;
-  metalness: number;
-  roughness: number;
-}
-
-const COLORS = {
-  plastic: '#3ddc84',
-  cardboard: '#c9b48a',
-  metal: '#aeb9bd',
-  glass: '#7fd0e0',
-  ewaste: '#5f7fd0',
-  dark: '#2b332e',
-} as const;
-
-/** Deterministic layout — a loose vertical stack with orbiters. */
-const BLOCKS: BlockSpec[] = [
-  { kind: 'bale', position: [0, -1.15, 0], scale: 1.5, color: COLORS.dark, metalness: 0.1, roughness: 0.75 },
-  { kind: 'cube', position: [0, 0.25, 0], scale: 1.05, color: COLORS.plastic, metalness: 0.25, roughness: 0.4 },
-  { kind: 'ingot', position: [0, 1.45, 0], scale: 0.85, color: COLORS.metal, metalness: 0.9, roughness: 0.25 },
-  { kind: 'slab', position: [-1.9, 0.7, 0.5], scale: 0.8, color: COLORS.cardboard, metalness: 0.05, roughness: 0.85 },
-  { kind: 'cube', position: [1.95, 0.9, 0.3], scale: 0.6, color: COLORS.glass, metalness: 0.1, roughness: 0.15 },
-  { kind: 'cube', position: [-1.75, -1.0, -0.4], scale: 0.5, color: COLORS.ewaste, metalness: 0.5, roughness: 0.4 },
-  { kind: 'cube', position: [1.6, -0.9, -0.7], scale: 0.45, color: COLORS.plastic, metalness: 0.25, roughness: 0.45 },
-  { kind: 'slab', position: [2.6, 0.2, -0.6], scale: 0.42, color: COLORS.dark, metalness: 0.2, roughness: 0.7 },
-  { kind: 'slab', position: [-2.7, 0.0, -0.8], scale: 0.4, color: COLORS.metal, metalness: 0.85, roughness: 0.3 },
+const COLORS = [
+  '#4db9e6', // plastic
+  '#f2c94c', // paper
+  '#a67c52', // cardboard
+  '#9ca3af', // metal
+  '#8b5cf6', // glass
+  '#ec4899', // ewaste
 ];
 
-function Block({ spec, animate }: { spec: BlockSpec; animate: boolean }) {
-  const mesh = useRef<Mesh>(null);
+function Bins() {
+  return (
+    <group position={[0, -1.8, 0]}>
+      {COLORS.map((color, i) => (
+        <group key={i} position={[-2.5 + i * 1.0, 0, 0]}>
+          <mesh position={[0, 0.4, 0]}>
+            <boxGeometry args={[0.8, 0.8, 0.8]} />
+            <meshStandardMaterial color={color} transparent opacity={0.15} depthWrite={false} side={THREE.DoubleSide} />
+            <lineSegments>
+              <edgesGeometry args={[new THREE.BoxGeometry(0.8, 0.8, 0.8)]} />
+              <lineBasicMaterial color={color} opacity={0.5} transparent />
+            </lineSegments>
+          </mesh>
+          <mesh position={[0, 0.2, 0]}>
+            <boxGeometry args={[0.7, 0.4, 0.7]} />
+            <meshStandardMaterial color={color} transparent opacity={0.4} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
 
+function GridFloor() {
+  return (
+    <gridHelper args={[20, 20, 0x34e27a, 0x232725]} position={[0, -1.8, 0]} />
+  );
+}
+
+function ScanRing() {
+  const ringRef = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
-    if (!animate || !mesh.current) return;
-    const t = clock.getElapsedTime();
-    const [x, y, z] = spec.position;
-    mesh.current.position.y = y + Math.sin(t * 0.6 + x * 2.1 + z) * 0.09;
-    mesh.current.rotation.y = t * 0.12 + x;
+    if (ringRef.current) {
+      ringRef.current.rotation.y = clock.getElapsedTime() * 0.5;
+    }
   });
 
-  const geometry = (() => {
-    switch (spec.kind) {
-      case 'bale': // compressed stock bale — wire-bound box, beveled by scale illusion
-        return <boxGeometry args={[1.35, 0.95, 1.05]} />;
-      case 'ingot': // extruded metal ingot
-        return <cylinderGeometry args={[0.5, 0.5, 1.1, 6]} />;
-      case 'slab': // flat sheet stock
-        return <boxGeometry args={[1.15, 0.16, 0.9]} />;
-      default: // cube — refined material unit
-        return <boxGeometry args={[0.95, 0.95, 0.95]} />;
-    }
-  })();
-
   return (
-    <mesh ref={mesh} position={[spec.position[0], spec.position[1], spec.position[2]]} scale={spec.scale}>
-      {geometry}
-      <meshStandardMaterial
-        color={spec.color}
-        metalness={spec.metalness}
-        roughness={spec.roughness}
-        envMapIntensity={0.6}
-      />
+    <mesh ref={ringRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[1.5, 0.05, 16, 64]} />
+      <meshBasicMaterial color="#34e27a" transparent opacity={0.8} />
     </mesh>
   );
 }
 
-/** Pointer parallax rig — rotates the whole stack subtly toward the cursor. */
-function ParallaxRig({ children, animate }: { children: React.ReactNode; animate: boolean }) {
-  const group = useRef<Group>(null);
-  const { pointer } = useThree();
+function FallingItems({ labelRef }: { labelRef: React.RefObject<HTMLDivElement> }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const itemsRef = useRef<THREE.Mesh[]>([]);
 
-  useFrame(() => {
-    if (!animate || !group.current) return;
-    group.current.rotation.y += (pointer.x * 0.28 - group.current.rotation.y) * 0.045;
-    group.current.rotation.x += (-pointer.y * 0.14 - group.current.rotation.x) * 0.045;
+  const state = useRef({
+    t: 0,
+    itemIndex: 0,
+    phase: 0, 
   });
 
-  return <group ref={group}>{children}</group>;
+  useFrame((_, delta) => {
+    const s = state.current;
+    s.t += delta;
+
+    if (!itemsRef.current[0]) return;
+
+    itemsRef.current.forEach((mesh, i) => {
+      if (mesh && i !== s.itemIndex) {
+        mesh.visible = false;
+      }
+    });
+
+    const activeItem = itemsRef.current[s.itemIndex];
+    if (!activeItem) return;
+    
+    activeItem.visible = true;
+
+    const targetX = -2.5 + s.itemIndex * 1.0;
+    const targetY = -1.6;
+
+    if (s.phase === 0) {
+      const progress = Math.min(s.t / 1.0, 1);
+      activeItem.position.set(0, 3 - progress * 2.5, 0);
+      activeItem.rotation.x += delta * 2;
+      activeItem.rotation.y += delta * 1.5;
+      
+      if (labelRef.current) {
+        labelRef.current.style.opacity = '0';
+      }
+
+      if (progress >= 1) {
+        s.phase = 1;
+        s.t = 0;
+      }
+    } else if (s.phase === 1) {
+      activeItem.position.y = 0.5 + Math.sin(s.t * 10) * 0.05;
+      activeItem.rotation.y += delta * 4;
+
+      if (labelRef.current) {
+        labelRef.current.style.opacity = '1';
+        const labels = [
+          "PET BOTTLE - PLASTIC - 91%",
+          "OFFICE PAPER - PAPER - 96%",
+          "CARTON - CARDBOARD - 88%",
+          "ALUMINIUM - METAL - 99%",
+          "JAR - GLASS - 94%",
+          "CIRCUIT - E-WASTE - 82%"
+        ];
+        const color = COLORS[s.itemIndex] as string;
+        labelRef.current.innerText = labels[s.itemIndex] as string;
+        labelRef.current.style.color = color;
+        labelRef.current.style.borderColor = color;
+      }
+
+      if (s.t > 1.2) {
+        s.phase = 2;
+        s.t = 0;
+      }
+    } else if (s.phase === 2) {
+      const progress = Math.min(s.t / 0.8, 1);
+      const startX = 0;
+      const startY = 0.5;
+      const currentX = startX + (targetX - startX) * progress;
+      const arcHeight = 1.0;
+      const currentY = startY + (targetY - startY) * progress + Math.sin(progress * Math.PI) * arcHeight;
+
+      activeItem.position.set(currentX, currentY, 0);
+      activeItem.scale.setScalar(1 - progress * 0.5);
+      activeItem.rotation.x += delta * 4;
+      activeItem.rotation.y += delta * 4;
+
+      if (labelRef.current && progress > 0.2) {
+        labelRef.current.style.opacity = '0';
+      }
+
+      if (progress >= 1) {
+        activeItem.visible = false;
+        activeItem.scale.setScalar(1);
+        s.phase = 0;
+        s.t = 0;
+        s.itemIndex = (s.itemIndex + 1) % 6;
+      }
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <mesh ref={(el) => (itemsRef.current[0] = el!)} visible={false}>
+        <cylinderGeometry args={[0.2, 0.2, 0.8, 16]} />
+        <meshStandardMaterial color={COLORS[0] as string} roughness={0.2} metalness={0.1} />
+      </mesh>
+      <mesh ref={(el) => (itemsRef.current[1] = el!)} visible={false}>
+        <boxGeometry args={[0.6, 0.2, 0.4]} />
+        <meshStandardMaterial color={COLORS[1] as string} roughness={0.8} />
+      </mesh>
+      <mesh ref={(el) => (itemsRef.current[2] = el!)} visible={false}>
+        <boxGeometry args={[0.5, 0.5, 0.5]} />
+        <meshStandardMaterial color={COLORS[2] as string} roughness={0.9} />
+      </mesh>
+      <mesh ref={(el) => (itemsRef.current[3] = el!)} visible={false}>
+        <cylinderGeometry args={[0.25, 0.25, 0.6, 16]} />
+        <meshStandardMaterial color={COLORS[3] as string} roughness={0.3} metalness={0.8} />
+      </mesh>
+      <mesh ref={(el) => (itemsRef.current[4] = el!)} visible={false}>
+        <cylinderGeometry args={[0.3, 0.3, 0.5, 16]} />
+        <meshStandardMaterial color={COLORS[4] as string} transparent opacity={0.6} roughness={0.1} />
+      </mesh>
+      <mesh ref={(el) => (itemsRef.current[5] = el!)} visible={false}>
+        <boxGeometry args={[0.7, 0.05, 0.4]} />
+        <meshStandardMaterial color={COLORS[5] as string} roughness={0.5} metalness={0.6} />
+      </mesh>
+    </group>
+  );
 }
 
 export default function HeroScene() {
-  const reduced =
-    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-  const compact = typeof window !== 'undefined' && window.innerWidth < 720;
-  const animate = !reduced && !compact;
+  const labelRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(true);
 
-  const blocks = useMemo(() => (compact ? BLOCKS.filter((_, i) => i < 5) : BLOCKS), [compact]);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]) {
+          setActive(entries[0].isIntersecting);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="h-full w-full" aria-hidden>
+    <div className="relative h-full w-full" ref={containerRef} aria-hidden>
       <Canvas
-        camera={{ position: [0, 0.6, 6.4], fov: 42 }}
-        dpr={[1, 1.75]}
-        gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
+        camera={{ position: [0, 1.5, 6], fov: 45 }}
+        dpr={[1, 2]}
+        gl={{ alpha: true, antialias: true }}
         onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
+        frameloop={active ? 'always' : 'never'}
       >
-        <ambientLight intensity={0.72} />
-        <directionalLight position={[4, 6, 4]} intensity={1.6} color="#eafff2" />
-        <directionalLight position={[-6, -2, -4]} intensity={0.65} color="#34e27a" />
-        <pointLight position={[0, -3, 2]} intensity={0.5} color="#34e27a" />
-        <ParallaxRig animate={animate}>
-          {blocks.map((spec, i) => (
-            <Block key={i} spec={spec} animate={animate} />
-          ))}
-        </ParallaxRig>
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[5, 10, 5]} intensity={1.5} color="#ffffff" />
+        <pointLight position={[0, 0.5, 0]} intensity={2} color="#34e27a" distance={4} />
+        <GridFloor />
+        <ScanRing />
+        <Bins />
+        <FallingItems labelRef={labelRef} />
       </Canvas>
+      <div
+        ref={labelRef}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[120px] rounded-full border border-current bg-surface/90 px-3 py-1 font-mono text-[10px] tracking-wider transition-opacity duration-200"
+        style={{ opacity: 0, color: '#34e27a' }}
+      >
+        SCANNING...
+      </div>
     </div>
   );
 }
